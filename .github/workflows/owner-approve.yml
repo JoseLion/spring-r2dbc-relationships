@@ -1,0 +1,14 @@
+name: Auto approve for owner
+
+on:
+  pull_request:
+    types: [opened, reopened]
+
+jobs:
+  approve:
+    if: github.actor == github.repository_owner
+    runs-on: ubuntu-latest
+    steps:
+      - uses: hmarr/auto-approve-action@v4
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}

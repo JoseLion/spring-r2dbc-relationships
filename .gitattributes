@@ -1,0 +1,9 @@
+* eol=lf
+
+# specific for windows script files
+*.bat text eol=crlf
+
+# required by gradle on Windows
+*.jar eol=auto
+buildscript-gradle.lockfile text eol=auto
+gradle.lockfile text eol=auto

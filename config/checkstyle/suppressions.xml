@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<!DOCTYPE suppressions PUBLIC "-//Checkstyle//DTD SuppressionFilter Configuration 1.2//EN" "https://checkstyle.org/dtds/suppressions_1_2.dtd">
+
+<suppressions>
+  <!-- Tests -->
+  <suppress files=".*[\\/]?src[\\/]test[\\/].+Test\.java$" checks="FinalClass" />
+  <suppress files=".*[\\/]?src[\\/]test[\\/].+Test\.java$" checks="HideUtilityClassConstructor" />
+  <suppress files=".*[\\/]?src[\\/]test[\\/].+Test\.java$" checks="IllegalThrows" />
+  <suppress files=".*[\\/]?src[\\/]test[\\/].+Test\.java$" checks="InnerTypeLast" />
+  <suppress files=".*[\\/]?src[\\/]test[\\/].+Test\.java$" checks="MethodName" />
+  <suppress files=".*[\\/]?src[\\/]test[\\/].+Test\.java$" checks="ThrowsCount" />
+  <suppress files=".*[\\/]?src[\\/]test[\\/].+Test\.java$" checks="TypeName" />
+  <suppress files=".*[\\/]?src[\\/]test[\\/].+Test\.java$" checks="RequireThis" />
+
+  <!-- Test Helpers -->
+  <suppress files=".*[\\/]?src[\\/]test[\\/].+\.java$" checks="MissingJavadocPackage" />
+  <suppress files=".*[\\/]?src[\\/]test[\\/].+\.java$" checks="MissingJavadocType" />
+</suppressions>

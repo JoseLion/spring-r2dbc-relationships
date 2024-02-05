@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:
+    branches: main
+  pull_request:
+  workflow_call:
+
+concurrency:
+  group: ci-${{ github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: oracle
+          java-version: 21
+          check-latest: true
+      - uses: gradle/actions/setup-gradle@v3
+      - run: ./gradlew compileJava compileTestJava
+      - run: ./gradlew checkstyleMain checkstyleTest
+      - run: ./gradlew sonarlintMain sonarlintTest
+      - run: ./gradlew javadoc
+      - run: ./gradlew test
+      - run: ./gradlew build -x check
