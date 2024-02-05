@@ -1,0 +1,115 @@
+buildscript {
+  configurations.classpath {
+    resolutionStrategy.activateDependencyLocking()
+  }
+}
+
+plugins {
+  id('checkstyle')
+  id('java-library')
+
+  alias(libs.plugins.prettyJupiter)
+  alias(libs.plugins.sonarlint)
+  alias(libs.plugins.strictNullCheck)
+}
+
+group = 'io.github.joselion'
+
+java {
+  toolchain {
+    languageVersion = JavaLanguageVersion.of(21)
+    vendor = JvmVendorSpec.ORACLE
+  }
+  withJavadocJar()
+  withSourcesJar()
+}
+
+javadoc {
+  title = 'Spring R2DBC Relational'
+  options {
+    encoding = 'UTF-8'
+    addBooleanOption('html5', true)
+    addStringOption('Xwerror', '-quiet')
+    tags('apiNote')
+  }
+}
+
+jar {
+  from(sourceSets.main.allSource)
+  manifest {
+    attributes(
+      'Build-Jdk': "${System.properties['java.version']} (${System.properties['java.vendor']} ${System.properties['java.vm.version']})",
+      'Build-Jdk-Spec': java.sourceCompatibility,
+      'Created-By': "Gradle ${gradle.gradleVersion}",
+      'Implementation-Title': project.name,
+      'Implementation-Vendor': 'Jose Luis Leon',
+      'Implementation-Version': project.version,
+      'Package': "${project.group}.${project.name}",
+    )
+  }
+}
+
+checkstyle {
+  setToolVersion(libs.versions.checkstyle.get())
+}
+
+sonarLint {
+  setToolVersion(libs.versions.sonarlint.core.get())
+  languages {
+    include('java')
+  }
+  rules {
+    enable(
+      'java:S4266', // "Stream.collect()" calls should not be redundant
+    )
+    disable(
+      'java:S107', // Allow constructors with more than 7 parameters
+      'java:S3776', // Allow methods with more than 15 lines
+      'java:S4032', // Allow packages only containing `package-info.java`
+    )
+  }
+}
+
+strictNullCheck {
+  addEclipse()
+  packageInfo {
+    useEclipse()
+    javadoc = '@author Jose Luis Leon'
+  }
+}
+
+dependencyLocking {
+  lockAllConfigurations()
+}
+
+// Workaround for: https://github.com/checkstyle/checkstyle/issues/14211
+configurations.checkstyle {
+  resolutionStrategy.capabilitiesResolution.withCapability("com.google.collections:google-collections") {
+    select("com.google.guava:guava:0")
+  }
+}
+
+repositories {
+  mavenCentral()
+}
+
+dependencies {
+  annotationProcessor(libs.lombok)
+  compileOnly(libs.lombok)
+  sonarlintCorePlugins(libs.sonarlint.java)
+}
+
+testing {
+  suites {
+    test {
+      useJUnitJupiter(libs.versions.junit.get())
+
+      dependencies {
+        annotationProcessor(libs.lombok)
+        compileOnly(libs.lombok)
+
+        implementation(libs.assertj.core)
+      }
+    }
+  }
+}

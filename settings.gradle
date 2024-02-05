@@ -1,0 +1,23 @@
+plugins {
+  id 'org.gradle.toolchains.foojay-resolver-convention' version '0.8.0'
+}
+
+rootProject.name = 'spring-r2dbc-relational'
+
+dependencyResolutionManagement {
+  versionCatalogs {
+    libs {
+      version('checkstyle', '10.13.0')
+      version('junit', '5.10.2')
+      version('sonarlint-core', '9.8.0.76914')
+
+      plugin('prettyJupiter', 'io.github.joselion.pretty-jupiter').version('3.2.0')
+      plugin('sonarlint', 'name.remal.sonarlint').version('3.4.6')
+      plugin('strictNullCheck', 'io.github.joselion.strict-null-check').version('3.3.0')
+
+      library('assertj-core', 'org.assertj', 'assertj-core').version('3.25.3')
+      library('lombok', 'org.projectlombok', 'lombok').version('1.18.30')
+      library('sonarlint-java', 'org.sonarsource.java', 'sonar-java-plugin').version('7.30.1.34514')
+    }
+  }
+}
