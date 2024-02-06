@@ -1,4 +1,4 @@
-package io.github.joselion.springr2dbcrelational;
+package io.github.joselion.springr2dbcrelationships;
 
 /**
  * Auto-generetaed test class.
