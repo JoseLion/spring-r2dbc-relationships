@@ -1,4 +1,4 @@
-package io.github.joselion.springr2dbcrelational;
+package io.github.joselion.springr2dbcrelationships;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
