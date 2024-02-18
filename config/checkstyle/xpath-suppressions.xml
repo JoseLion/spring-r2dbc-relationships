@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<!DOCTYPE suppressions PUBLIC "-//Checkstyle//DTD SuppressionXpathFilter Experimental Configuration 1.2//EN" "https://checkstyle.org/dtds/suppressions_1_2_xpath_experimental.dtd">
+
+<suppressions>
+  <!-- Spring Boot -->
+  <suppress-xpath
+    checks="HideUtilityClassConstructor"
+    files="\.java$"
+    query="
+      //CLASS_DEF[
+        ./MODIFIERS[
+          ./ANNOTATION[
+            ./IDENT[
+              @text='SpringBootApplication'
+              or @text='Configuration'
+              or @text='Component'
+              or @text='Service'
+            ]
+          ]
+        ]
+      ]
+    "
+  />
+</suppressions>

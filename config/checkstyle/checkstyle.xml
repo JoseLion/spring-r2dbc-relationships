@@ -113,6 +113,10 @@
     <module name="UnusedLocalVariable" />
 
     <!-- Filters -->
+    <module name="SuppressionXpathFilter">
+      <property name="file" value="${config_loc}/xpath-suppressions.xml" default="config/checkstyle/xpath-suppressions.xml" />
+      <property name="optional" value="false" />
+    </module>
     <module name="SuppressWithNearbyCommentFilter">
       <property name="commentFormat" value="NOSONAR|NOCHECKSTYLE" />
     </module>

@@ -1,11 +1,34 @@
 # This is a Gradle generated file for dependency locking.
 # Manual edits can break the build and are not advised.
 # This file is expected to be part of source control.
+com.fasterxml.jackson.core:jackson-annotations:2.14.2=classpath
+com.fasterxml.jackson.core:jackson-core:2.14.2=classpath
+com.fasterxml.jackson.core:jackson-databind:2.14.2=classpath
+com.fasterxml.jackson.module:jackson-module-parameter-names:2.14.2=classpath
+com.fasterxml.jackson:jackson-bom:2.14.2=classpath
+com.google.code.findbugs:jsr305:3.0.2=classpath
 io.github.joselion.pretty-jupiter:io.github.joselion.pretty-jupiter.gradle.plugin:3.2.0=classpath
 io.github.joselion.strict-null-check:io.github.joselion.strict-null-check.gradle.plugin:3.3.0=classpath
 io.github.joselion:maybe:3.5.0=classpath
 io.github.joselion:pretty-jupiter:3.2.0=classpath
 io.github.joselion:strict-null-check:3.3.0=classpath
+io.spring.dependency-management:io.spring.dependency-management.gradle.plugin:1.1.4=classpath
+io.spring.gradle:dependency-management-plugin:1.1.4=classpath
 name.remal.gradle-plugins.sonarlint:sonarlint:3.4.6=classpath
 name.remal.sonarlint:name.remal.sonarlint.gradle.plugin:3.4.6=classpath
+net.java.dev.jna:jna-platform:5.13.0=classpath
+net.java.dev.jna:jna:5.13.0=classpath
+org.antlr:antlr4-runtime:4.7.2=classpath
+org.apache.commons:commons-compress:1.23.0=classpath
+org.apache.httpcomponents.client5:httpclient5:5.2.3=classpath
+org.apache.httpcomponents.core5:httpcore5-h2:5.2.4=classpath
+org.apache.httpcomponents.core5:httpcore5:5.2.4=classpath
+org.slf4j:slf4j-api:1.7.36=classpath
+org.springframework.boot:org.springframework.boot.gradle.plugin:3.2.2=classpath
+org.springframework.boot:spring-boot-buildpack-platform:3.2.2=classpath
+org.springframework.boot:spring-boot-gradle-plugin:3.2.2=classpath
+org.springframework.boot:spring-boot-loader-tools:3.2.2=classpath
+org.springframework:spring-core:6.0.10=classpath
+org.springframework:spring-jcl:6.0.10=classpath
+org.tomlj:tomlj:1.0.0=classpath
 empty=
