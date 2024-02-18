@@ -3,7 +3,7 @@
 
 <module name="Checker">
   <property name="fileExtensions" value="java" />
-  <property name="severity" value="error" />
+  <property name="severity" value="warning" />
 
   <!-- Filters -->
   <module name="SuppressWithPlainTextCommentFilter" />

@@ -51,6 +51,7 @@ jar {
 
 checkstyle {
   setToolVersion(libs.versions.checkstyle.get())
+  setMaxWarnings(0)
 }
 
 sonarLint {
