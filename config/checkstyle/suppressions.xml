@@ -15,4 +15,9 @@
   <!-- Test Helpers -->
   <suppress files=".*[\\/]?src[\\/]test[\\/].+\.java$" checks="MissingJavadocPackage" />
   <suppress files=".*[\\/]?src[\\/]test[\\/].+\.java$" checks="MissingJavadocType" />
+
+  <!-- Test Fixtures -->
+  <suppress files=".*[\\/]?src[\\/]testFixtures[\\/].+\.java$" checks="MissingJavadocPackage" />
+  <suppress files=".*[\\/]?src[\\/]testFixtures[\\/].+\.java$" checks="MissingJavadocType" />
+  <suppress files=".*[\\/]?src[\\/]testFixtures[\\/].+\.java$" checks="MissingJavadocMethod" />
 </suppressions>

@@ -7,9 +7,12 @@ buildscript {
 plugins {
   id('checkstyle')
   id('java-library')
+  id('java-test-fixtures')
 
   alias(libs.plugins.prettyJupiter)
   alias(libs.plugins.sonarlint)
+  alias(libs.plugins.spring.boot)
+  alias(libs.plugins.spring.management)
   alias(libs.plugins.strictNullCheck)
 }
 
@@ -49,6 +52,10 @@ jar {
   }
 }
 
+bootJar {
+  enabled = false
+}
+
 checkstyle {
   setToolVersion(libs.versions.checkstyle.get())
   setMaxWarnings(0)
@@ -72,7 +79,7 @@ sonarLint {
 }
 
 strictNullCheck {
-  addEclipse()
+  addEclipse(libs.versions.eclipse.get())
   packageInfo {
     useEclipse()
     javadoc = '@author Jose Luis Leon'
@@ -97,7 +104,18 @@ repositories {
 dependencies {
   annotationProcessor(libs.lombok)
   compileOnly(libs.lombok)
+  compileOnly(libs.spring.data.r2dbc)
+  compileOnly(libs.spring.webflux)
   sonarlintCorePlugins(libs.sonarlint.java)
+
+  implementation(libs.maybe)
+
+  testFixturesAnnotationProcessor(libs.lombok)
+  testFixturesCompileOnly(libs.lombok)
+  testFixturesImplementation(libs.spring.boot.r2dbc)
+  testFixturesImplementation(libs.spring.boot.webflux)
+  testFixturesRuntimeOnly(libs.h2)
+  testFixturesRuntimeOnly(libs.h2.r2dbc)
 }
 
 testing {
@@ -108,8 +126,16 @@ testing {
       dependencies {
         annotationProcessor(libs.lombok)
         compileOnly(libs.lombok)
+        runtimeOnly(libs.h2)
+        runtimeOnly(libs.h2.r2dbc)
 
         implementation(libs.assertj.core)
+        implementation(libs.mockito.core)
+        implementation(libs.reactor.extra)
+        implementation(libs.reactor.test)
+        implementation(libs.spring.boot.r2dbc)
+        implementation(libs.spring.boot.test)
+        implementation(libs.spring.boot.webflux)
       }
     }
   }
