@@ -1,5 +1,6 @@
 package io.github.joselion.springr2dbcrelationships;
 
+import static java.util.Arrays.stream;
 import static java.util.function.Predicate.not;
 import static org.springframework.data.relational.core.query.Criteria.where;
 import static org.springframework.data.relational.core.query.Query.query;
@@ -9,9 +10,14 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
 
+import org.eclipse.jdt.annotation.Nullable;
 import org.reactivestreams.Publisher;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.domain.Auditable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.Sort.Direction;
 import org.springframework.data.mapping.PersistentEntity;
 import org.springframework.data.r2dbc.core.R2dbcEntityTemplate;
 import org.springframework.data.r2dbc.mapping.OutboundRow;
@@ -21,6 +27,8 @@ import org.springframework.data.relational.core.mapping.RelationalPersistentProp
 import org.springframework.data.relational.core.sql.SqlIdentifier;
 import org.springframework.stereotype.Component;
 
+import io.github.joselion.maybe.Maybe;
+import io.github.joselion.springr2dbcrelationships.annotations.OneToMany;
 import io.github.joselion.springr2dbcrelationships.annotations.OneToOne;
 import io.github.joselion.springr2dbcrelationships.annotations.ProjectionOf;
 import io.github.joselion.springr2dbcrelationships.exceptions.RelationshipException;
@@ -55,9 +63,19 @@ public record RelationalCallbacks<T>(
       .parallel()
       .runOn(Schedulers.parallel())
       .flatMap(entityField ->
-        Mono.just(entityField)
-          .filter(field -> field.isAnnotationPresent(OneToOne.class))
-          .zipWhen(field -> this.populateOneToOne(entity, field, table))
+        Mono
+          .just(entityField)
+          .zipWhen(field -> {
+            if (field.isAnnotationPresent(OneToOne.class)) {
+              return this.populateOneToOne(entity, field, table);
+            }
+
+            if (field.isAnnotationPresent(OneToMany.class)) {
+              return this.populateOneToMany(entity, field, table);
+            }
+
+            return Mono.empty();
+          })
       )
       .sequential()
       .reduce(entity, (acc, tuple) -> {
@@ -85,16 +103,31 @@ public record RelationalCallbacks<T>(
       .parallel()
       .runOn(Schedulers.parallel())
       .flatMap(entityField ->
-        Mono.just(entityField)
-          .filter(field -> field.isAnnotationPresent(OneToOne.class))
-          .filter(field ->
-            Optional.of(OneToOne.class)
+        Mono
+          .just(entityField)
+          .zipWhen(field -> {
+            final var hasOneToOne = Optional.of(OneToOne.class)
+              .filter(field::isAnnotationPresent)
               .map(field::getAnnotation)
               .filter(not(OneToOne::readonly))
               .filter(not(OneToOne::backReference))
-              .isPresent()
-          )
-          .zipWhen(field -> this.persistOneToOne(entity, field, table))
+              .isPresent();
+            final var hasOneToMany = Optional.of(OneToMany.class)
+              .filter(field::isAnnotationPresent)
+              .map(field::getAnnotation)
+              .filter(not(OneToMany::readonly))
+              .isPresent();
+
+            if (hasOneToOne) {
+              return this.persistOneToOne(entity, field, table);
+            }
+
+            if (hasOneToMany) {
+              return this.persistOneToMany(entity, entityField, table);
+            }
+
+            return Mono.empty();
+          })
       )
       .sequential()
       .reduce(entity, (acc, tuple) -> {
@@ -106,7 +139,7 @@ public record RelationalCallbacks<T>(
       .defaultIfEmpty(entity);
   }
 
-  private <S> Mono<S> populateOneToOne(final T entity, final Field field, final SqlIdentifier table) {
+  private Mono<?> populateOneToOne(final T entity, final Field field, final SqlIdentifier table) {
     final var fieldType = field.getType();
     final var isBackReference = Optional.of(OneToOne.class)
       .map(field::getAnnotation)
@@ -145,25 +178,62 @@ public record RelationalCallbacks<T>(
             .as(fieldType)
             .matching(query(where(parentId).is(fkValue)))
             .one()
-        )
-        .map(Commons::cast);
+        );
     }
 
-    return this.idOrEmpty(entity)
-      .map(entityId ->
+    return Mono.just(entity)
+      .mapNotNull(this::getIdOf)
+      .flatMap(entityId ->
         this.template
           .select(this.domainFor(fieldType))
           .as(fieldType)
           .matching(query(where(mappedBy).is(entityId)))
           .one()
-          .map(Commons::<S>cast)
-      )
-      .orElseGet(Mono::empty);
+      );
   }
 
-  private <S> Mono<S> persistOneToOne(final T entity, final Field field, final SqlIdentifier table) {
-    return this.idOrEmpty(entity)
-      .map(entityId -> {
+  private Mono<? extends List<?>> populateOneToMany(final T entity, final Field field, final SqlIdentifier table) {
+    final var innerType = Reflect.innerTypeOf(field);
+    final var mappedBy = Optional.of(OneToMany.class)
+      .map(field::getAnnotation)
+      .map(OneToMany::mappedBy)
+      .filter(not(String::isBlank))
+      .orElseGet(() -> table.getReference().concat("_id"));
+    final var sortByOrEmpty = Optional.of(OneToMany.class)
+      .map(field::getAnnotation)
+      .map(OneToMany::sortBy)
+      .filter(not(String::isBlank))
+      .or(() -> this.createdAtField(entity).map(this::columnNameOf))
+      .or(() ->
+        Maybe.of("createdAt")
+          .solve(innerType::getDeclaredField)
+          .map(this::columnNameOf)
+          .toOptional()
+      );
+    final var sortIn = Optional.of(OneToMany.class)
+      .map(field::getAnnotation)
+      .map(OneToMany::sortIn)
+      .orElse(Direction.ASC);
+    final var byColumn = sortByOrEmpty
+      .map(sortBy -> Sort.by(sortIn, sortBy))
+      .orElseGet(Sort::unsorted);
+
+    return Mono.just(entity)
+      .mapNotNull(this::getIdOf)
+      .flatMap(entityId ->
+        this.template
+          .select(this.domainFor(innerType))
+          .as(innerType)
+          .matching(query(where(mappedBy).is(entityId)).sort(byColumn))
+          .all()
+          .collectList()
+      );
+  }
+
+  private Mono<?> persistOneToOne(final T entity, final Field field, final SqlIdentifier table) {
+    return Mono.just(entity)
+      .mapNotNull(this::getIdOf)
+      .flatMap(entityId -> {
         final var fieldType = field.getType();
         final var entityName = entity.getClass().getSimpleName();
         final var mappedBy = Optional.of(OneToOne.class)
@@ -179,16 +249,50 @@ public record RelationalCallbacks<T>(
 
         return Mono.justOrEmpty(value)
           .flatMap(this::upsert)
-          .map(Commons::<S>cast)
           .switchIfEmpty(
             this.template
               .delete(this.domainFor(fieldType))
               .matching(query(where(mappedBy).is(entityId)))
               .all()
-              .then(Mono.<S>empty())
+              .then(Mono.empty())
           );
-      })
-      .orElseGet(Mono::empty);
+      });
+  }
+
+  private Mono<? extends List<?>> persistOneToMany(final T entity, final Field field, final SqlIdentifier table) {
+    return Mono.just(entity)
+      .mapNotNull(this::getIdOf)
+      .flatMap(entityId -> {
+        final var innerType = Reflect.innerTypeOf(field);
+        final var mappedBy = Optional.of(OneToMany.class)
+          .map(field::getAnnotation)
+          .map(OneToMany::mappedBy)
+          .filter(not(String::isBlank))
+          .orElseGet(() -> table.getReference().concat("_id"));
+        final var mappedField = Maybe.of(mappedBy)
+          .map(Commons::toCamelCase)
+          .solve(innerType::getDeclaredField)
+          .orThrow(RelationshipException::of);
+        final var values = Optional.of(entity)
+          .map(Reflect.<List<?>>getter(field))
+          .orElseGet(List::of);
+
+        return Flux.fromIterable(values)
+          .map(x -> Reflect.update(x, mappedField, entityId))
+          .flatMap(this::upsert)
+          .collectList()
+          .delayUntil(children -> {
+            final var innerId = this.findIdColumn(innerType);
+            final var ids = children.stream()
+              .map(this::getIdOf)
+              .toList();
+
+            return this.template
+              .delete(innerType)
+              .matching(query(where(mappedBy).is(entityId).and(innerId).notIn(ids)))
+              .all();
+          });
+      });
   }
 
   private <S> Mono<S> upsert(final S entity) {
@@ -221,7 +325,8 @@ public record RelationalCallbacks<T>(
       .getReference();
   }
 
-  private <S> Optional<S> idOrEmpty(final Object target) {
+  @Nullable
+  private Object getIdOf(final Object target) {
     final var mapper = this.template.getConverter().getMappingContext();
 
     return Optional.of(target)
@@ -229,7 +334,8 @@ public record RelationalCallbacks<T>(
       .map(mapper::getRequiredPersistentEntity)
       .map(PersistentEntity::getIdProperty)
       .map(RelationalPersistentProperty::getField)
-      .map(field -> Reflect.<S>getter(target, field));
+      .map(field -> Reflect.getter(target, field))
+      .orElse(null);
   }
 
   private String tableNameOf(final Class<?> type) {
@@ -248,5 +354,33 @@ public record RelationalCallbacks<T>(
         .filter(stack -> stack.size() == stack.stream().distinct().count())
         .map(List::size)
     );
+  }
+
+  private Optional<Field> createdAtField(final Object target) {
+    final var targetType = target.getClass();
+    final var fields = targetType.getDeclaredFields();
+
+    if (target instanceof Auditable) {
+      return Maybe.of("createdDate")
+        .solve(targetType::getDeclaredField)
+        .toOptional();
+    }
+
+    return stream(fields)
+      .filter(field -> field.isAnnotationPresent(CreatedDate.class))
+      .findFirst();
+  }
+
+  private String columnNameOf(final Field field) {
+    final var fieldName = field.getName();
+    final var targetType = field.getDeclaringClass();
+
+    return this.template
+      .getConverter()
+      .getMappingContext()
+      .getRequiredPersistentEntity(targetType)
+      .getRequiredPersistentProperty(fieldName)
+      .getColumnName()
+      .getReference();
   }
 }
