@@ -1,5 +1,8 @@
 package io.github.joselion.springr2dbcrelationships.models.phone.details;
 
+import static io.github.joselion.springr2dbcrelationships.helpers.Constants.UUID_ZERO;
+
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 import org.eclipse.jdt.annotation.Nullable;
@@ -12,6 +15,7 @@ import lombok.With;
 @With
 public record PhoneDetails(
   @Id @Nullable UUID id,
+  LocalDateTime createdAt,
   UUID phoneId,
   @OneToOne(backReference = true) Phone phone,
   String provider,
@@ -21,7 +25,8 @@ public record PhoneDetails(
   public static PhoneDetails empty() {
     return new PhoneDetails(
       null,
-      UUID.randomUUID(),
+      LocalDateTime.now(),
+      UUID_ZERO,
       Phone.empty(),
       "",
       ""
