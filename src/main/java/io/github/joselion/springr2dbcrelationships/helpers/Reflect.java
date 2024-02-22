@@ -20,7 +20,7 @@ import io.github.joselion.maybe.Maybe;
 import io.github.joselion.springr2dbcrelationships.exceptions.ReflectException;
 
 /**
- * Reflection helper class.
+ * Reflection helpers.
  */
 public final class Reflect {
 

@@ -26,4 +26,8 @@ public record Phone(
       null
     );
   }
+
+  public static Phone of(final String number) {
+    return Phone.empty().withNumber(number);
+  }
 }
