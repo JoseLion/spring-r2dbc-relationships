@@ -5,13 +5,11 @@ import static org.springframework.data.relational.core.query.Criteria.where;
 import static org.springframework.data.relational.core.query.Query.query;
 
 import java.lang.reflect.Field;
-import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.r2dbc.core.R2dbcEntityTemplate;
 import org.springframework.data.relational.core.sql.SqlIdentifier;
 
-import io.github.joselion.springr2dbcrelationships.RelationshipCallbacks;
 import io.github.joselion.springr2dbcrelationships.annotations.OneToOne;
 import io.github.joselion.springr2dbcrelationships.exceptions.RelationshipException;
 import io.github.joselion.springr2dbcrelationships.helpers.Commons;
@@ -110,14 +108,5 @@ public record OneToOneProcessor(
               .then(Mono.empty())
           );
       });
-  }
-
-  private Mono<Integer> checkCycles() {
-    return Mono.deferContextual(ctx ->
-      Mono.just(RelationshipCallbacks.class)
-        .map(ctx::<List<?>>get)
-        .filter(stack -> stack.size() == stack.stream().distinct().count())
-        .map(List::size)
-    );
   }
 }

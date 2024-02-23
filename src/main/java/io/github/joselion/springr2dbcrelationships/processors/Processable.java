@@ -4,6 +4,7 @@ import static java.util.Arrays.stream;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
+import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
 
@@ -16,6 +17,7 @@ import org.springframework.data.relational.core.mapping.RelationalPersistentProp
 import org.springframework.data.relational.core.sql.SqlIdentifier;
 
 import io.github.joselion.maybe.Maybe;
+import io.github.joselion.springr2dbcrelationships.RelationshipCallbacks;
 import io.github.joselion.springr2dbcrelationships.annotations.ProjectionOf;
 import io.github.joselion.springr2dbcrelationships.helpers.Commons;
 import io.github.joselion.springr2dbcrelationships.helpers.Reflect;
@@ -102,7 +104,7 @@ public interface Processable<T extends Annotation, U> {
    */
   default <S> Mono<S> upsert(final S entity) {
     final var template = this.template();
-    final var type = entity.getClass();
+    final var type = this.domainFor(entity.getClass());
     final var isNew = template
       .getConverter()
       .getMappingContext()
@@ -218,5 +220,20 @@ public interface Processable<T extends Annotation, U> {
       .getRequiredPersistentProperty(fieldName)
       .getColumnName()
       .getReference();
+  }
+
+  /**
+   * Returns a publisher with the count of entities processed in the actual
+   * subscription or empty if the processing has become cyclical.
+   *
+   * @return a publisher with the entities proccesing count or empty
+   */
+  default Mono<Integer> checkCycles() {
+    return Mono.deferContextual(ctx ->
+      Mono.just(RelationshipCallbacks.class)
+        .map(ctx::<List<?>>get)
+        .filter(stack -> stack.size() == stack.stream().distinct().count())
+        .map(List::size)
+    );
   }
 }

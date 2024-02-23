@@ -109,6 +109,7 @@ dependencies {
   sonarlintCorePlugins(libs.sonarlint.java)
 
   implementation(libs.maybe)
+  implementation(libs.reactor.extra)
 
   testFixturesAnnotationProcessor(libs.lombok)
   testFixturesCompileOnly(libs.lombok)
@@ -131,7 +132,6 @@ testing {
 
         implementation(libs.assertj.core)
         implementation(libs.mockito.core)
-        implementation(libs.reactor.extra)
         implementation(libs.reactor.test)
         implementation(libs.spring.boot.r2dbc)
         implementation(libs.spring.boot.test)

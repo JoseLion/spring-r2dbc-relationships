@@ -29,15 +29,15 @@ import org.springframework.data.domain.Sort.Direction;
 public @interface OneToMany {
 
   /**
-   * Used to specify the name of the "foreing key" column of the child table.
+   * Used to specify the name of the "foreing key" column on the child table.
    * This is usually not necessary if the name of the column matches the name
    * of the parent table followed by an {@code _id} suffix.
    *
-   * <p>For example, given the parent table is {@code person} and the child
-   * table is {@code phone}. By default, the annotation will look for
-   * the "foreign key" column {@code person_id} in the {@code phone} table.
+   * <p>For example, given the parent table is {@code country} and the child
+   * table is {@code city}. By default, the annotation will use {@code country_id}
+   * as the "foreign key" column of the {@code city} table.
    *
-   * @return the name of the "foreing key" column
+   * @return the name of the "foreing key" column in the child table
    */
   String mappedBy() default "";
 
@@ -45,7 +45,7 @@ public @interface OneToMany {
    * Should the entity on the annotated field be readonly. I.e., the entity is
    * never persisted. Defaults to {@code false}.
    *
-   * @return whether the annotated entoty is readonly or not
+   * @return whether the annotated entity is readonly or not
    */
   boolean readonly() default false;
 
