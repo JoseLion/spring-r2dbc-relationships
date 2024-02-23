@@ -9,6 +9,7 @@ import org.springframework.data.annotation.Id;
 
 import io.github.joselion.springr2dbcrelationships.annotations.OneToMany;
 import io.github.joselion.springr2dbcrelationships.models.city.City;
+import io.github.joselion.springr2dbcrelationships.models.town.Town;
 import lombok.With;
 
 @With
@@ -16,7 +17,8 @@ public record Country(
   @Id @Nullable UUID id,
   LocalDateTime createdAt,
   String name,
-  @OneToMany List<City> cities
+  @OneToMany List<City> cities,
+  @OneToMany List<Town> towns
 ) {
 
   public static Country empty() {
@@ -24,6 +26,7 @@ public record Country(
       null,
       LocalDateTime.now(),
       "",
+      List.of(),
       List.of()
     );
   }

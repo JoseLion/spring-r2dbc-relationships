@@ -41,7 +41,7 @@ public @interface OneToOne {
   boolean backReference() default false;
 
   /**
-   * Used to specify the name of the "foreing key" column of the child table.
+   * Used to specify the name of the "foreing key" column on the child table.
    * This is usually not necessary if the name of the column matches the name
    * of the parent table followed by an {@code _id} suffix.
    * 
@@ -57,7 +57,7 @@ public @interface OneToOne {
    * Should the entity on the annotated field be readonly. I.e., the entity is
    * never persisted. Defaults to {@code false}.
    *
-   * @return whether the annotated entoty is readonly or not
+   * @return whether the annotated entity is readonly or not
    */
   boolean readonly() default false;
 }

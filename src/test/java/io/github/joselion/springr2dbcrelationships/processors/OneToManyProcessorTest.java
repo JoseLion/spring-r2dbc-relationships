@@ -14,9 +14,9 @@ import io.github.joselion.springr2dbcrelationships.models.city.CityRepository;
 import io.github.joselion.springr2dbcrelationships.models.country.Country;
 import io.github.joselion.springr2dbcrelationships.models.country.CountryRepository;
 import io.github.joselion.testing.annotations.IntegrationTest;
+import io.github.joselion.testing.transactional.TxStepVerifier;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.test.StepVerifier;
 
 @IntegrationTest class OneToManyProcessorTest {
 
@@ -44,7 +44,7 @@ import reactor.test.StepVerifier;
             .publish(cityRepo::saveAll)
         )
         .flatMap(countryRepo::findById)
-        .as(StepVerifier::create)
+        .as(TxStepVerifier::withRollback)
         .assertNext(found -> {
           assertThat(found.id()).isNotNull();
           assertThat(found.cities())
@@ -65,7 +65,7 @@ import reactor.test.StepVerifier;
           Mono.just(cities)
             .map(usa::withCities)
             .flatMap(countryRepo::save)
-            .as(StepVerifier::create)
+            .as(TxStepVerifier::withRollback)
             .assertNext(saved -> {
               assertThat(saved.id()).isNotNull();
               assertThat(saved.cities())
@@ -100,7 +100,7 @@ import reactor.test.StepVerifier;
             .map(Country::id)
             .flatMapMany(cityRepo::findByCountryId)
             .collectList()
-            .as(StepVerifier::create)
+            .as(TxStepVerifier::withRollback)
             .assertNext(cities -> {
               assertThat(cities)
                 .isNotEmpty()
@@ -130,7 +130,7 @@ import reactor.test.StepVerifier;
           .map(Country::id)
           .flatMapMany(cityRepo::findByCountryId)
           .collectList()
-          .as(StepVerifier::create)
+          .as(TxStepVerifier::withRollback)
           .assertNext(result -> {
             assertThat(result)
               .extracting(City::name)
@@ -152,7 +152,7 @@ import reactor.test.StepVerifier;
           .map(Country::id)
           .flatMapMany(cityRepo::findByCountryId)
           .collectList()
-          .as(StepVerifier::create)
+          .as(TxStepVerifier::withRollback)
           .assertNext(found -> {
             assertThat(found).isEmpty();
           })
@@ -172,7 +172,7 @@ import reactor.test.StepVerifier;
           .map(Country::id)
           .flatMapMany(cityRepo::findByCountryId)
           .collectList()
-          .as(StepVerifier::create)
+          .as(TxStepVerifier::withRollback)
           .assertNext(found -> {
             assertThat(found).isEmpty();
           })

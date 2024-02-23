@@ -11,8 +11,8 @@ import io.github.joselion.springr2dbcrelationships.models.phone.PhoneRepository;
 import io.github.joselion.springr2dbcrelationships.models.phone.details.PhoneDetails;
 import io.github.joselion.springr2dbcrelationships.models.phone.details.PhoneDetailsRepository;
 import io.github.joselion.testing.annotations.IntegrationTest;
+import io.github.joselion.testing.transactional.TxStepVerifier;
 import reactor.core.publisher.Mono;
-import reactor.test.StepVerifier;
 
 @IntegrationTest class OneToOneProcessorTest {
 
@@ -39,7 +39,7 @@ import reactor.test.StepVerifier;
               .flatMap(phoneDetailsRepo::save)
           )
           .flatMap(phoneRepo::findById)
-          .as(StepVerifier::create)
+          .as(TxStepVerifier::withRollback)
           .assertNext(found -> {
             final var phoneDetails = found.phoneDetails();
 
@@ -62,7 +62,7 @@ import reactor.test.StepVerifier;
           .flatMap(phoneDetailsRepo::save)
           .map(PhoneDetails::id)
           .flatMap(phoneDetailsRepo::findById)
-          .as(StepVerifier::create)
+          .as(TxStepVerifier::withRollback)
           .assertNext(found -> {
             assertThat(found.phone()).isNotNull();
             assertThat(found.phone().id()).isNotNull();
@@ -88,7 +88,7 @@ import reactor.test.StepVerifier;
             .map(Phone::phoneDetails)
             .mapNotNull(PhoneDetails::id)
             .flatMap(phoneDetailsRepo::findById)
-            .as(StepVerifier::create)
+            .as(TxStepVerifier::withRollback)
             .assertNext(found -> {
               assertThat(found.id()).isNotNull();
               assertThat(found.provider()).isEqualTo(details.provider());
@@ -110,7 +110,7 @@ import reactor.test.StepVerifier;
             .map(Phone::phoneDetails)
             .map(PhoneDetails::id)
             .flatMap(phoneDetailsRepo::findById)
-            .as(StepVerifier::create)
+            .as(TxStepVerifier::withRollback)
             .assertNext(found -> {
               assertThat(found.id()).isNotNull();
               assertThat(found.provider()).isEqualTo(details.provider());
@@ -132,7 +132,7 @@ import reactor.test.StepVerifier;
             .map(Phone::phoneDetails)
             .map(PhoneDetails::id)
             .flatMap(phoneDetailsRepo::findById)
-            .as(StepVerifier::create)
+            .as(TxStepVerifier::withRollback)
             .expectNextCount(0)
             .verifyComplete();
         }
@@ -153,7 +153,7 @@ import reactor.test.StepVerifier;
           .map(PhoneDetails::phone)
           .map(Phone::id)
           .flatMap(phoneRepo::findById)
-          .as(StepVerifier::create)
+          .as(TxStepVerifier::withRollback)
           .assertNext(found -> {
             assertThat(found.number()).isEqualTo(phone.number());
           })

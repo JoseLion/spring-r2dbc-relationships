@@ -1,4 +1,4 @@
-package io.github.joselion.springr2dbcrelationships.models.city;
+package io.github.joselion.springr2dbcrelationships.models.town;
 
 import static io.github.joselion.springr2dbcrelationships.helpers.Constants.UUID_ZERO;
 
@@ -13,16 +13,16 @@ import io.github.joselion.springr2dbcrelationships.models.country.Country;
 import lombok.With;
 
 @With
-public record City(
+public record Town(
   @Id @Nullable UUID id,
   LocalDateTime createdAt,
   UUID countryId,
-  @ManyToOne Country country,
+  @ManyToOne(persist = true) Country country,
   String name
 ) {
 
-  public static City empty() {
-    return new City(
+  public static Town empty() {
+    return new Town(
       null,
       LocalDateTime.now(),
       UUID_ZERO,
@@ -31,7 +31,7 @@ public record City(
     );
   }
 
-  public static City of(final String name) {
-    return City.empty().withName(name);
+  public static Town of(final String name) {
+    return Town.empty().withName(name);
   }
 }
