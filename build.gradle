@@ -8,8 +8,11 @@ plugins {
   id('checkstyle')
   id('java-library')
   id('java-test-fixtures')
+  id('maven-publish')
+  id('signing')
 
   alias(libs.plugins.prettyJupiter)
+  alias(libs.plugins.publishPlugin)
   alias(libs.plugins.sonarlint)
   alias(libs.plugins.spring.boot)
   alias(libs.plugins.spring.management)
@@ -38,6 +41,7 @@ javadoc {
 }
 
 jar {
+  archiveClassifier = ''
   duplicatesStrategy(DuplicatesStrategy.EXCLUDE)
   from(sourceSets.main.allSource)
   manifest {
@@ -138,6 +142,67 @@ testing {
         implementation(libs.spring.boot.test)
         implementation(libs.spring.boot.webflux)
       }
+    }
+  }
+}
+
+publishing {
+  publications {
+    mavenJava(MavenPublication) {
+      from(components.java)
+      pom {
+        name = 'spring-r2dbc-relationships'
+        packaging = 'jar'
+        description = 'Spring R2DBC annotations to handle entity relationships'
+        url = 'https://github.com/JoseLion/spring-r2dbc-relationships'
+
+        scm {
+          connection = 'scm:git:https://github.com/JoseLion/spring-r2dbc-relationships.git'
+          developerConnection = 'scm:git:ssh://github.com/JoseLion/spring-r2dbc-relationships.git'
+          url = 'https://github.com/JoseLion/spring-r2dbc-relationships'
+        }
+        licenses {
+          license {
+            name = 'MIT License'
+            url = 'https://github.com/JoseLion/spring-r2dbc-relationships/blob/main/LICENSE'
+          }
+        }
+        developers {
+          developer {
+            id = 'JoseLion'
+            name = "Jose Luis Leon"
+            email = 'joseluis5000l@gmail.com'
+          }
+        }
+      }
+    }
+  }
+}
+
+components {
+  java {
+    withVariantsFromConfiguration(configurations.testFixturesApiElements) {
+      skip()
+    }
+    withVariantsFromConfiguration(configurations.testFixturesRuntimeElements) {
+      skip()
+    }
+  }
+}
+
+signing {
+  def signingKey = findProperty("signingKey")
+  def signingPassword = findProperty("signingPassword")
+
+  useInMemoryPgpKeys(signingKey, signingPassword)
+  sign(publishing.publications.mavenJava)
+}
+
+nexusPublishing {
+  repositories {
+    sonatype {
+      nexusUrl = uri('https://s01.oss.sonatype.org/service/local/')
+      snapshotRepositoryUrl = uri('https://s01.oss.sonatype.org/content/repositories/snapshots/')
     }
   }
 }
