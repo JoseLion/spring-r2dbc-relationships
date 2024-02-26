@@ -28,9 +28,9 @@ java {
 }
 
 javadoc {
-  title = 'Spring R2DBC Relationships'
+  title('Spring R2DBC Relationships')
   options {
-    encoding = 'UTF-8'
+    encoding('UTF-8')
     addBooleanOption('html5', true)
     addStringOption('Xwerror', '-quiet')
     tags('apiNote')
@@ -38,6 +38,7 @@ javadoc {
 }
 
 jar {
+  duplicatesStrategy(DuplicatesStrategy.EXCLUDE)
   from(sourceSets.main.allSource)
   manifest {
     attributes(
@@ -53,7 +54,7 @@ jar {
 }
 
 bootJar {
-  enabled = false
+  enabled(false)
 }
 
 checkstyle {

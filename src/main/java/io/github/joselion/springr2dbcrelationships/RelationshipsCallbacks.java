@@ -10,14 +10,12 @@ import java.util.stream.Stream;
 
 import org.reactivestreams.Publisher;
 import org.springframework.context.ApplicationContext;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.data.r2dbc.core.R2dbcEntityTemplate;
 import org.springframework.data.r2dbc.mapping.OutboundRow;
 import org.springframework.data.r2dbc.mapping.event.AfterConvertCallback;
 import org.springframework.data.r2dbc.mapping.event.AfterSaveCallback;
 import org.springframework.data.r2dbc.mapping.event.BeforeConvertCallback;
 import org.springframework.data.relational.core.sql.SqlIdentifier;
-import org.springframework.stereotype.Component;
 
 import io.github.joselion.springr2dbcrelationships.annotations.ManyToMany;
 import io.github.joselion.springr2dbcrelationships.annotations.ManyToOne;
@@ -43,10 +41,9 @@ import reactor.util.function.Tuples;
  * @param template the r2dbc entity template
  * @param context the Spring application context
  */
-@Component
-public record RelationshipCallbacks<T>(
-  @Lazy R2dbcEntityTemplate template,
-  @Lazy ApplicationContext context
+public record RelationshipsCallbacks<T>(
+  R2dbcEntityTemplate template,
+  ApplicationContext context
 ) implements AfterConvertCallback<T>, AfterSaveCallback<T>, BeforeConvertCallback<T> {
 
   @Override
@@ -163,19 +160,19 @@ public record RelationshipCallbacks<T>(
   private UnaryOperator<Context> addToContextStack(final T entity) {
     return ctx -> {
       final var typeName = entity.getClass().getName();
-      final var stack = ctx.<List<String>>getOrEmpty(RelationshipCallbacks.class)
+      final var stack = ctx.<List<String>>getOrEmpty(RelationshipsCallbacks.class)
         .map(List::stream)
         .map(prev -> Stream.concat(prev, Stream.of(typeName)))
         .map(Stream::toList)
         .orElse(List.of(typeName));
 
-      return ctx.put(RelationshipCallbacks.class, stack);
+      return ctx.put(RelationshipsCallbacks.class, stack);
     };
   }
 
   private <S> Mono<S> checkingCycles(final S data) {
     return Mono.deferContextual(ctx -> {
-      final var stack = ctx.<List<String>>getOrEmpty(RelationshipCallbacks.class);
+      final var stack = ctx.<List<String>>getOrEmpty(RelationshipsCallbacks.class);
 
       return Mono.justOrEmpty(stack)
         .defaultIfEmpty(List.of())

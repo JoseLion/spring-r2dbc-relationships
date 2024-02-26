@@ -21,7 +21,7 @@ import org.springframework.data.r2dbc.core.R2dbcEntityTemplate;
 import org.springframework.data.r2dbc.mapping.event.AfterConvertCallback;
 import org.springframework.data.relational.core.sql.SqlIdentifier;
 
-import io.github.joselion.springr2dbcrelationships.RelationshipCallbacks;
+import io.github.joselion.springr2dbcrelationships.RelationshipsCallbacks;
 import io.github.joselion.springr2dbcrelationships.annotations.ManyToMany;
 import io.github.joselion.springr2dbcrelationships.annotations.OneToMany;
 import io.github.joselion.springr2dbcrelationships.exceptions.RelationshipException;
@@ -237,7 +237,7 @@ public record ManyToManyProcessor(
 
   private <S> Mono<S> checkingBackRef(final Class<?> type, final S value) {
     return Mono.deferContextual(ctx -> {
-      final var stack = ctx.<List<String>>getOrEmpty(RelationshipCallbacks.class);
+      final var stack = ctx.<List<String>>getOrEmpty(RelationshipsCallbacks.class);
 
       return Mono.justOrEmpty(stack)
         .defaultIfEmpty(List.of())
