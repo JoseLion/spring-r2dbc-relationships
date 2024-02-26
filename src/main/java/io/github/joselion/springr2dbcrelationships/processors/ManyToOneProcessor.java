@@ -33,30 +33,34 @@ public record ManyToOneProcessor(
   public Mono<Object> populate(final ManyToOne annotation, final Field field) {
     final var fieldProjection = field.getType();
     final var fieldType = this.domainFor(fieldProjection);
-    final var foreignKey = Optional.of(annotation)
+    final var byTable = this.tableNameOf(fieldType).concat("_id");
+    final var byField = Commons.toSnakeCase(field.getName()).concat("_id");
+    final var foreignField = Optional.of(annotation)
       .map(ManyToOne::foreignKey)
+      .map(Commons::toCamelCase)
       .filter(not(String::isBlank))
-      .orElseGet(() -> this.tableNameOf(fieldType).concat("_id"));
-    final var foreignField = Commons.toCamelCase(foreignKey);
-    final var parentId = this.idColumnOf(fieldType);
-    final var keyValue = Optional.of(this.entity)
-      .map(Reflect.getter(foreignField))
+      .or(() -> this.inferForeignField(byTable).map(Field::getName))
+      .or(() -> this.inferForeignField(byField).map(Field::getName))
       .orElseThrow(() -> {
         final var entityType = this.domainFor(this.entity.getClass());
-        final var message = "Entity <%s> is missing foreign key in field: %s".formatted(
-          entityType.getName(),
-          foreignField
-        );
-
+        final var message = """
+          Unable to infer foreign key for "%s" entity. Neither "%s" nor "%s"
+          associated fields could be found
+          """
+          .formatted(entityType.getSimpleName(), byTable, byField);
         return RelationshipException.of(message);
       });
+    final var parentId = this.idColumnOf(fieldType);
 
-    return this.template
-      .select(fieldType)
-      .as(fieldProjection)
-      .matching(query(where(parentId).is(keyValue)))
-      .one()
-      .map(Commons::cast);
+    return Mono.just(this.entity)
+      .mapNotNull(Reflect.getter(foreignField))
+      .flatMap(fkValue ->
+        this.template
+          .select(fieldType)
+          .as(fieldProjection)
+          .matching(query(where(parentId).is(fkValue)))
+          .one()
+      );
   }
 
   @Override

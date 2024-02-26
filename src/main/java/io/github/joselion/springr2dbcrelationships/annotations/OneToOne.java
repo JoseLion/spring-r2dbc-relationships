@@ -41,13 +41,21 @@ public @interface OneToOne {
   boolean backReference() default false;
 
   /**
-   * Used to specify the name of the "foreign key" column on the child table.
-   * This is usually optional if the name of the column matches the name of the
-   * parent table followed by an {@code _id} suffix.
+   * Used to specify the name of the "foreign key" column in the child table.
+   * This is usually optional because the anotation can infer the "foreign key"
+   * column name in two different ways:
+   *
+   * <p>1. The name of the column matches the name of the parent table
+   * followed by an {@code _id} suffix.
+   *
+   * <p>2. The name of the column matches the name of the annotated field
+   * followed by an {@code _id} suffix.
    * 
-   * <p>For example, given the parent table is {@code phone} and the child
-   * table is {@code phone_details}. By default, the annotation will look for
-   * the "foreign key" column {@code phone_id} in the {@code phone_details} table.
+   * <p>For example, given a parent table {@code phone}, a child table
+   * {@code phone_details}, and the annotated field {@code @OneToOne PhoneDetails details;}.
+   * By default, the "foreign key" column of the {@code phone_details} table
+   * will be inferred as {@code phone_id} using option (1). If that fails, it
+   * will try {@code details_id} using option (2).
    *
    * @return the name of the "foreign key" column
    */

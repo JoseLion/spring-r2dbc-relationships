@@ -284,4 +284,30 @@ public interface Processable<T extends Annotation, U> {
       .map(SqlIdentifier::getReference)
       .orElse(null);
   }
+
+  /**
+   * Tries to infer the foreign key field in the specified entity type.
+   *
+   * @param foreignKey the foreign key column name
+   * @param entityType the entity type to find the field from
+   * @return the foreign key field
+   */
+  default Optional<Field> inferForeignField(final String foreignKey, final Class<?> entityType) {
+    return Maybe.of(foreignKey)
+      .map(Commons::toCamelCase)
+      .solve(entityType::getDeclaredField)
+      .toOptional();
+  }
+
+  /**
+   * Tries to infer the foreign key field in the current entity type.
+   *
+   * @param foreignKey the foreign key column name
+   * @return the foreign key field
+   */
+  default Optional<Field> inferForeignField(final String foreignKey) {
+    final var entityType = this.domainFor(this.entity().getClass());
+
+    return this.inferForeignField(foreignKey, entityType);
+  }
 }
