@@ -1,5 +1,6 @@
 package io.github.joselion.springr2dbcrelationships.processors;
 
+import static java.util.Arrays.stream;
 import static java.util.function.Predicate.isEqual;
 import static java.util.function.Predicate.not;
 import static java.util.stream.Collectors.joining;
@@ -11,6 +12,7 @@ import java.text.MessageFormat;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Predicate;
 import java.util.stream.IntStream;
@@ -66,13 +68,18 @@ public record ManyToManyProcessor(
       .or(() -> this.createdColumnOf(innerType))
       .map(sortBy -> "ORDER BY b.%s %s".formatted(sortBy, sortIn))
       .orElse("");
+    final var columns = stream(innerType.getDeclaredFields())
+      .map(this::columnNameOrNull)
+      .filter(Objects::nonNull)
+      .map("b."::concat)
+      .collect(joining(", "));
     final var partialStatement = """
-      SELECT DISTINCT b.* FROM %s AS b
+      SELECT DISTINCT %s FROM %s AS b
         LEFT JOIN %s AS j ON j.%s = b.%s
       WHERE j.%s = $1
       %s
       """
-      .formatted(innerTable, "%s", linkedBy, innerId, mappedBy, orderBy);
+      .formatted(columns, innerTable, "%s", linkedBy, innerId, mappedBy, orderBy);
 
     return Mono.just(annotation)
       .map(ManyToMany::joinTable)
@@ -105,8 +112,8 @@ public record ManyToManyProcessor(
 
   @Override
   public Mono<List<?>> persist(final ManyToMany annotation, final Field field) {
-    final var entityType = this.entity.getClass();
-    final var innerType = Reflect.innerTypeOf(field);
+    final var entityType = this.domainFor(this.entity.getClass());
+    final var innerType = this.domainFor(Reflect.innerTypeOf(field));
     final var entityTable = this.tableNameOf(entityType);
     final var innerTable = this.tableNameOf(innerType);
     final var mappedBy = Optional.of(annotation)

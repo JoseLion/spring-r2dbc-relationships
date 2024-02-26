@@ -31,7 +31,8 @@ public record ManyToOneProcessor(
 
   @Override
   public Mono<Object> populate(final ManyToOne annotation, final Field field) {
-    final var fieldType = field.getType();
+    final var fieldProjection = field.getType();
+    final var fieldType = this.domainFor(fieldProjection);
     final var foreignKey = Optional.of(annotation)
       .map(ManyToOne::foreignKey)
       .filter(not(String::isBlank))
@@ -41,8 +42,9 @@ public record ManyToOneProcessor(
     final var keyValue = Optional.of(this.entity)
       .map(Reflect.getter(foreignField))
       .orElseThrow(() -> {
+        final var entityType = this.domainFor(this.entity.getClass());
         final var message = "Entity <%s> is missing foreign key in field: %s".formatted(
-          this.entity.getClass().getName(),
+          entityType.getName(),
           foreignField
         );
 
@@ -50,8 +52,8 @@ public record ManyToOneProcessor(
       });
 
     return this.template
-      .select(this.domainFor(fieldType))
-      .as(fieldType)
+      .select(fieldType)
+      .as(fieldProjection)
       .matching(query(where(parentId).is(keyValue)))
       .one()
       .map(Commons::cast);
@@ -59,7 +61,7 @@ public record ManyToOneProcessor(
 
   @Override
   public Mono<Object> persist(final ManyToOne annotation, final Field field) {
-    final var fieldType = field.getType();
+    final var fieldType = this.domainFor(field.getType());
     final var foreignKey = Optional.of(annotation)
       .map(ManyToOne::foreignKey)
       .filter(not(String::isBlank))

@@ -35,7 +35,8 @@ public record OneToManyProcessor(
 
   @Override
   public Mono<List<?>> populate(final OneToMany annotation, final Field field) {
-    final var innerType = Reflect.innerTypeOf(field);
+    final var innerProjection = Reflect.innerTypeOf(field);
+    final var innerType = this.domainFor(innerProjection);
     final var mappedBy = Optional.of(annotation)
       .map(OneToMany::mappedBy)
       .filter(not(String::isBlank))
@@ -51,8 +52,8 @@ public record OneToManyProcessor(
       .mapNotNull(this::idValueOf)
       .flatMap(entityId ->
         this.template
-          .select(this.domainFor(innerType))
-          .as(innerType)
+          .select(innerType)
+          .as(innerProjection)
           .matching(query(where(mappedBy).is(entityId)).sort(byColumn))
           .all()
           .collectList()
@@ -64,7 +65,7 @@ public record OneToManyProcessor(
     return Mono.just(this.entity)
       .mapNotNull(this::idValueOf)
       .flatMap(entityId -> {
-        final var innerType = Reflect.innerTypeOf(field);
+        final var innerType = this.domainFor(Reflect.innerTypeOf(field));
         final var mappedBy = Optional.of(annotation)
           .map(OneToMany::mappedBy)
           .filter(not(String::isBlank))
