@@ -261,4 +261,27 @@ public interface Processable<T extends Annotation, U> {
       .getColumnName()
       .getReference();
   }
+
+  /**
+   * Returns the column name representation of a field or null if the
+   * persistent property does not exist.
+   *
+   * @param field the field that maps the column
+   * @return the column name of the field or null
+   */
+  @Nullable
+  default String columnNameOrNull(final Field field) {
+    final var fieldName = field.getName();
+    final var targetType = field.getDeclaringClass();
+    final var entity = this.template()
+      .getConverter()
+      .getMappingContext()
+      .getRequiredPersistentEntity(targetType);
+
+    return Optional.of(fieldName)
+      .map(entity::getPersistentProperty)
+      .map(RelationalPersistentProperty::getColumnName)
+      .map(SqlIdentifier::getReference)
+      .orElse(null);
+  }
 }

@@ -31,7 +31,8 @@ public record OneToOneProcessor(
 
   @Override
   public Mono<Object> populate(final OneToOne annotation, final Field field) {
-    final var fieldType = field.getType();
+    final var fieldProjection = field.getType();
+    final var fieldType = this.domainFor(fieldProjection);
     final var isBackReference = Optional.of(annotation)
       .filter(OneToOne::backReference)
       .isPresent();
@@ -52,8 +53,9 @@ public record OneToOneProcessor(
       final var fkValue = Optional.of(this.entity)
         .map(Reflect.getter(mappedField))
         .orElseThrow(() -> {
+          final var entityType = this.domainFor(this.entity.getClass());
           final var message = "Entity <%s> is missing foreign key in field: %s".formatted(
-            this.entity.getClass().getName(),
+            entityType.getName(),
             mappedField
           );
 
@@ -61,8 +63,8 @@ public record OneToOneProcessor(
         });
 
       return this.template
-        .select(this.domainFor(fieldType))
-        .as(fieldType)
+        .select(fieldType)
+        .as(fieldProjection)
         .matching(query(where(parentId).is(fkValue)))
         .one()
         .map(Commons::cast);
@@ -72,8 +74,8 @@ public record OneToOneProcessor(
       .mapNotNull(this::idValueOf)
       .flatMap(entityId ->
         this.template
-          .select(this.domainFor(fieldType))
-          .as(fieldType)
+          .select(fieldType)
+          .as(fieldProjection)
           .matching(query(where(mappedBy).is(entityId)))
           .one()
       );
@@ -84,8 +86,9 @@ public record OneToOneProcessor(
     return Mono.just(this.entity)
       .mapNotNull(this::idValueOf)
       .flatMap(entityId -> {
-        final var fieldType = field.getType();
-        final var entityName = this.entity.getClass().getSimpleName();
+        final var fieldType = this.domainFor(field.getType());
+        final var entityType = this.domainFor(this.entity.getClass());
+        final var entityName = entityType.getSimpleName();
         final var mappedBy = Optional.of(annotation)
           .map(OneToOne::mappedBy)
           .filter(not(String::isBlank))
@@ -100,7 +103,7 @@ public record OneToOneProcessor(
           .flatMap(this::upsert)
           .switchIfEmpty(
             this.template
-              .delete(this.domainFor(fieldType))
+              .delete(fieldType)
               .matching(query(where(mappedBy).is(entityId)))
               .all()
               .then(Mono.empty())
