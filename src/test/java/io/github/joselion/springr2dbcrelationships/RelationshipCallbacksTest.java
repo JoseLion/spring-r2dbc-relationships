@@ -25,13 +25,13 @@ import reactor.test.StepVerifier;
         final var table = SqlIdentifier.unquoted("test_entity");
         final var template = mock(R2dbcEntityTemplate.class);
         final var context = mock(ApplicationContext.class);
-        final var callbacks = new RelationshipCallbacks<>(template, context);
+        final var callbacks = new RelationshipsCallbacks<>(template, context);
         final var publisher = callbacks.onAfterConvert(entity, table);
 
         Mono.from(publisher)
           .as(StepVerifier::create)
           .expectAccessibleContext()
-          .contains(RelationshipCallbacks.class, List.of(TestEntity.class.getName()))
+          .contains(RelationshipsCallbacks.class, List.of(TestEntity.class.getName()))
           .then()
           .expectNext(entity)
           .verifyComplete();
