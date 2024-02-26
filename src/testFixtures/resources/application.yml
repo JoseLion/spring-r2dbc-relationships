@@ -3,3 +3,8 @@ spring:
     url: r2dbc:h2:mem:///~/db/testdb?options=DB_CLOSE_DELAY=-1;
     username: sa
     password: ""
+
+# logging:
+#   level:
+#     org.springframework.r2dbc: TRACE
+#     io.r2dbc.h2: TRACE

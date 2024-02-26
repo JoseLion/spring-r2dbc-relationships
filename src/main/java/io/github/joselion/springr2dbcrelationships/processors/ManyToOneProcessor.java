@@ -49,14 +49,12 @@ public record ManyToOneProcessor(
         return RelationshipException.of(message);
       });
 
-    return this.checkCycles()
-      .flatMap(x ->
-        this.template
-          .select(this.domainFor(fieldType))
-          .as(fieldType)
-          .matching(query(where(parentId).is(keyValue)))
-          .one()
-      );
+    return this.template
+      .select(this.domainFor(fieldType))
+      .as(fieldType)
+      .matching(query(where(parentId).is(keyValue)))
+      .one()
+      .map(Commons::cast);
   }
 
   @Override
@@ -68,8 +66,8 @@ public record ManyToOneProcessor(
       .orElseGet(() -> this.tableNameOf(fieldType).concat("_id"));
     final var foreignField = Commons.toCamelCase(foreignKey);
 
-    return this.checkCycles()
-      .mapNotNull(x -> Reflect.getter(this.entity, field))
+    return Mono.just(this.entity)
+      .mapNotNull(Reflect.getter(field))
       .flatMap(this::upsert)
       .map(saved -> {
         final var savedId = this.idValueOf(saved);

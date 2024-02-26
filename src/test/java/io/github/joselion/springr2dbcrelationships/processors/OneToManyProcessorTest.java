@@ -3,6 +3,7 @@ package io.github.joselion.springr2dbcrelationships.processors;
 import static org.assertj.core.api.Assertions.assertThat;
 import static reactor.function.TupleUtils.function;
 
+import java.time.Duration;
 import java.util.List;
 
 import org.junit.jupiter.api.Nested;
@@ -16,7 +17,6 @@ import io.github.joselion.springr2dbcrelationships.models.country.CountryReposit
 import io.github.joselion.testing.annotations.IntegrationTest;
 import io.github.joselion.testing.transactional.TxStepVerifier;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 
 @IntegrationTest class OneToManyProcessorTest {
 
@@ -26,13 +26,13 @@ import reactor.core.publisher.Mono;
   @Autowired
   private CityRepository cityRepo;
 
-  private final City newYork = City.of("New York");
-
-  private final City boston = City.of("Boston");
-
-  private final City chicago = City.of("Chicago");
-
   private final Country usa = Country.of("United States of America");
+
+  private final String newYork = "New York";
+
+  private final String boston = "Boston";
+
+  private final String chicago = "Chicago";
 
   @Nested class populate {
     @Test void populates_the_field_with_the_children_entities() {
@@ -40,6 +40,8 @@ import reactor.core.publisher.Mono;
         .map(Country::id)
         .delayUntil(id ->
           Flux.just(newYork, boston, chicago)
+            .delayElements(Duration.ofMillis(10))
+            .map(City::of)
             .map(city -> city.withCountryId(id))
             .publish(cityRepo::saveAll)
         )
@@ -50,7 +52,7 @@ import reactor.core.publisher.Mono;
           assertThat(found.cities())
             .isNotEmpty()
             .extracting(City::name)
-            .containsExactly("New York", "Boston", "Chicago");
+            .containsExactly(chicago, boston, newYork);
         })
         .verifyComplete();
     }
@@ -60,9 +62,9 @@ import reactor.core.publisher.Mono;
     @Nested class when_there_are_no_orphan_children {
       @Nested class and_the_children_are_new {
         @Test void creates_the_children_entities() {
-          final var cities = List.of(newYork, boston, chicago);
-
-          Mono.just(cities)
+          Flux.just(newYork, boston, chicago)
+            .map(City::of)
+            .collectList()
             .map(usa::withCities)
             .flatMap(countryRepo::save)
             .as(TxStepVerifier::withRollback)
@@ -75,7 +77,7 @@ import reactor.core.publisher.Mono;
                   assertThat(city.countryId()).isEqualTo(saved.id());
                 })
                 .extracting(City::name)
-                .containsExactly("New York", "Boston", "Chicago");
+                .containsExactly(newYork, boston, chicago);
             })
             .verifyComplete();
         }
@@ -86,6 +88,7 @@ import reactor.core.publisher.Mono;
           countryRepo.save(usa)
             .zipWhen(saved ->
               Flux.just(newYork, boston, chicago)
+                .map(City::of)
                 .map(city -> city.withCountryId(saved.id()))
                 .publish(cityRepo::saveAll)
                 .collectList()
@@ -105,7 +108,11 @@ import reactor.core.publisher.Mono;
               assertThat(cities)
                 .isNotEmpty()
                 .extracting(City::name)
-                .containsExactly("NEW YORK", "BOSTON", "CHICAGO");
+                .contains(
+                  newYork.toUpperCase(),
+                  boston.toUpperCase(),
+                  chicago.toUpperCase()
+                );
             })
             .verifyComplete();
         }
@@ -114,9 +121,9 @@ import reactor.core.publisher.Mono;
 
     @Nested class when_there_are_orphan_children {
       @Test void persists_the_children_entities_and_delete_the_orphans() {
-        final var cities = List.of(newYork, boston, chicago);
-
-        Mono.just(cities)
+        Flux.just(newYork, boston, chicago)
+          .map(City::of)
+          .collectList()
           .map(usa::withCities)
           .flatMap(countryRepo::save)
           .map(saved -> {
@@ -134,7 +141,7 @@ import reactor.core.publisher.Mono;
           .assertNext(result -> {
             assertThat(result)
               .extracting(City::name)
-              .containsExactly("New York", "Chicago");
+              .containsExactly(newYork, chicago);
           })
           .verifyComplete();
       }
@@ -142,9 +149,9 @@ import reactor.core.publisher.Mono;
 
     @Nested class when_all_the_children_are_left_orphan {
       @Test void deletes_all_the_orphan_children() {
-        final var cities = List.of(newYork, boston, chicago);
-
-        Mono.just(cities)
+        Flux.just(newYork, boston, chicago)
+          .map(City::of)
+          .collectList()
           .map(usa::withCities)
           .flatMap(countryRepo::save)
           .map(saved -> saved.withCities(List.of()))
@@ -162,9 +169,9 @@ import reactor.core.publisher.Mono;
 
     @Nested class when_the_children_field_is_null {
       @Test void deletes_all_the_orphan_children() {
-        final var cities = List.of(newYork, boston, chicago);
-
-        Mono.just(cities)
+        Flux.just(newYork, boston, chicago)
+          .map(City::of)
+          .collectList()
           .map(usa::withCities)
           .flatMap(countryRepo::save)
           .map(saved -> saved.withCities(null))

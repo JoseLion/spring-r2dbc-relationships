@@ -8,6 +8,7 @@ import java.util.UUID;
 import org.eclipse.jdt.annotation.Nullable;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.ApplicationContext;
 import org.springframework.data.r2dbc.core.R2dbcEntityTemplate;
 import org.springframework.data.relational.core.sql.SqlIdentifier;
 
@@ -23,7 +24,8 @@ import reactor.test.StepVerifier;
         final var entity = TestEntity.of("Bono");
         final var table = SqlIdentifier.unquoted("test_entity");
         final var template = mock(R2dbcEntityTemplate.class);
-        final var callbacks = new RelationshipCallbacks<>(template);
+        final var context = mock(ApplicationContext.class);
+        final var callbacks = new RelationshipCallbacks<>(template, context);
         final var publisher = callbacks.onAfterConvert(entity, table);
 
         Mono.from(publisher)

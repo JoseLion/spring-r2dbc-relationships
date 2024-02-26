@@ -60,14 +60,12 @@ public record OneToOneProcessor(
           return RelationshipException.of(message);
         });
 
-      return this.checkCycles()
-        .flatMap(x ->
-          this.template
-            .select(this.domainFor(fieldType))
-            .as(fieldType)
-            .matching(query(where(parentId).is(fkValue)))
-            .one()
-        );
+      return this.template
+        .select(this.domainFor(fieldType))
+        .as(fieldType)
+        .matching(query(where(parentId).is(fkValue)))
+        .one()
+        .map(Commons::cast);
     }
 
     return Mono.just(this.entity)

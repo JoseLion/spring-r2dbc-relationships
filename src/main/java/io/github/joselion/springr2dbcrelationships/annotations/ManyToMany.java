@@ -16,7 +16,7 @@ import org.springframework.data.domain.Auditable;
 import org.springframework.data.domain.Sort.Direction;
 
 /**
- * Marks a field to have a one-to-many relationship.
+ * Marks a field to have a many-to-many relationship.
  *
  * <p>This annotation also adds the {@link Transient @Transient} and
  * {@link Value @Value("null")} annotations to the field.
@@ -26,18 +26,47 @@ import org.springframework.data.domain.Sort.Direction;
 @Value("null") // NOSONAR
 @Retention(RUNTIME)
 @Target({FIELD, PARAMETER, ANNOTATION_TYPE})
-public @interface OneToMany {
+public @interface ManyToMany {
 
   /**
-   * Used to specify the name of the "foreign key" column on the child table.
-   * This is usually optional if the name of the column matches the name of the
-   * parent table followed by an {@code _id} suffix.
+   * Used to specify the name of the join table responsible for the
+   * many-to-many relationship between two tables. This is usually optional if
+   * the name of the join table matches the names of both related tables joined
+   * by an underscore (in any order).
    *
-   * <p>For example, given the parent table is {@code country} and the child
-   * table is {@code city}. By default, the annotation will use {@code country_id}
-   * as the "foreign key" column of the {@code city} table.
+   * <p>For example, given a table {@code author} and a table {@code book}, the
+   * default join table for the relationship can be either {@code author_book}
+   * or {@code book_author}.
    *
-   * @return the name of the "foreign key" column in the child table
+   * @return the name of the relationship join table
+   */
+  String joinTable() default "";
+
+  /**
+   * Used to specify the name of the "foreign key" column that maps the join
+   * table with the linked table. This is usually optional if the column's name
+   * matches the linked table name followed by an {@code _id} suffix.
+   *
+   * <p>For example, given a table {@code author} and a table {@code book}, and
+   * given the annotation is used in a field of {@code author}'s entity, we can
+   * say the linked table is {@code book} and its "foreign key" column in the
+   * join table will be {@code book_id} by default.
+   *
+   * @return the name of the column linking the join table
+   */
+  String linkedBy() default "";
+
+  /**
+   * Used to specify the name of the "foreign key" column that maps the
+   * annotated field's entity with the join table. This is usually optional if
+   * the column's name matches the entity's table name followed by an {@code _id}
+   * suffix.
+   *
+   * <p>For example, given a table {@code author} and a table {@code book}, and
+   * given the annotation is used in a field of {@code author}'s entity, the
+   * "foreign key" column in the join table will be {@code author_id} by default.
+   *
+   * @return the name of the column mapping the join table
    */
   String mappedBy() default "";
 

@@ -4,7 +4,6 @@ import static java.util.Arrays.stream;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
-import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
 
@@ -17,7 +16,6 @@ import org.springframework.data.relational.core.mapping.RelationalPersistentProp
 import org.springframework.data.relational.core.sql.SqlIdentifier;
 
 import io.github.joselion.maybe.Maybe;
-import io.github.joselion.springr2dbcrelationships.RelationshipCallbacks;
 import io.github.joselion.springr2dbcrelationships.annotations.ProjectionOf;
 import io.github.joselion.springr2dbcrelationships.helpers.Commons;
 import io.github.joselion.springr2dbcrelationships.helpers.Reflect;
@@ -96,6 +94,23 @@ public interface Processable<T extends Annotation, U> {
   SqlIdentifier table();
 
   /**
+   * Returns {@code true} if the entity is considered to be new, {@code false}
+   * otherwise.
+   *
+   * @param entity the entity to check if it's new
+   * @return true if the entity is new, false otherwise
+   */
+  default boolean isNew(final Object entity) {
+    final var type = this.domainFor(entity.getClass());
+
+    return this.template()
+      .getConverter()
+      .getMappingContext()
+      .getRequiredPersistentEntity(type)
+      .isNew(entity);
+  }
+
+  /**
    * Inserts an entity when it's new or updates it otherwise.
    *
    * @param <S> the entity type
@@ -104,14 +119,8 @@ public interface Processable<T extends Annotation, U> {
    */
   default <S> Mono<S> upsert(final S entity) {
     final var template = this.template();
-    final var type = this.domainFor(entity.getClass());
-    final var isNew = template
-      .getConverter()
-      .getMappingContext()
-      .getRequiredPersistentEntity(type)
-      .isNew(entity);
 
-    return isNew
+    return this.isNew(entity)
       ? template.insert(entity)
       : template.update(entity);
   }
@@ -133,17 +142,28 @@ public interface Processable<T extends Annotation, U> {
   }
 
   /**
-   * Returns the table name of an entity type.
+   * Returns the table {@link SqlIdentifier} of an entity type.
    *
-   * @param type the entity type
-   * @return the table name
+   * @param type the type of the entity
+   * @return the table identifier
    */
-  default String tableNameOf(final Class<?> type) {
+  default SqlIdentifier tableIdentifierOf(final Class<?> type) {
     return this.template()
       .getConverter()
       .getMappingContext()
       .getRequiredPersistentEntity(type)
-      .getTableName()
+      .getTableName();
+  }
+
+  /**
+   * Returns the table name of an entity type.
+   *
+   * @param type the type of the entity
+   * @return the table name
+   */
+  default String tableNameOf(final Class<?> type) {
+    return this
+      .tableIdentifierOf(type)
       .getReference();
   }
 
@@ -182,25 +202,45 @@ public interface Processable<T extends Annotation, U> {
   }
 
   /**
-   * Returns an {@link Optional} containing the auditable field used to mark
+   * Returns an {@link Optional} containing the auditable column used to mark
    * the date of creation or empty.
    *
-   * @param target the target to find the field
-   * @return an option with the creation date field or empty
+   * @param type the target's type to find the field
+   * @return an optional with the creation date column or empty
    */
-  default Optional<Field> createdAtFieldOf(final Object target) {
-    final var targetType = target.getClass();
-    final var fields = targetType.getDeclaredFields();
+  default Optional<String> createdColumnOf(final Class<?> type) {
+    final var fields = type.getDeclaredFields();
 
-    if (target instanceof Auditable) {
+    if (Auditable.class.isAssignableFrom(type)) {
       return Maybe.of("createdDate")
-        .solve(targetType::getDeclaredField)
-        .toOptional();
+        .solve(type::getDeclaredField)
+        .toOptional()
+        .map(this::columnNameOf);
     }
 
     return stream(fields)
       .filter(field -> field.isAnnotationPresent(CreatedDate.class))
-      .findFirst();
+      .findFirst()
+      .or(() ->
+        Maybe.of("createdAt")
+          .solve(type::getDeclaredField)
+          .toOptional()
+      )
+      .map(this::columnNameOf);
+  }
+
+  /**
+   * Returns an {@link Optional} containing the auditable column used to mark
+   * the date of creation or empty.
+   *
+   * @param <S> the type of the target
+   * @param target the target to find the field
+   * @return an optional with the creation date column or empty
+   */
+  default <S> Optional<String> createdColumnOf(final S target) {
+    final var targetType = target.getClass();
+
+    return this.createdColumnOf(targetType);
   }
 
   /**
@@ -220,20 +260,5 @@ public interface Processable<T extends Annotation, U> {
       .getRequiredPersistentProperty(fieldName)
       .getColumnName()
       .getReference();
-  }
-
-  /**
-   * Returns a publisher with the count of entities processed in the actual
-   * subscription or empty if the processing has become cyclical.
-   *
-   * @return a publisher with the entities proccesing count or empty
-   */
-  default Mono<Integer> checkCycles() {
-    return Mono.deferContextual(ctx ->
-      Mono.just(RelationshipCallbacks.class)
-        .map(ctx::<List<?>>get)
-        .filter(stack -> stack.size() == stack.stream().distinct().count())
-        .map(List::size)
-    );
   }
 }
