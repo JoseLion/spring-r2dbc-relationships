@@ -26,15 +26,15 @@ import org.springframework.data.annotation.Transient;
 public @interface ManyToOne {
 
   /**
-   * Used to specify the name of the "foreing key" column in the current
-   * entity's table. This is usually not necessary if the name of the column
-   * matches the name of the parent table followed by an {@code _id} suffix.
+   * Used to specify the name of the "foreign key" column in the current
+   * entity's table. This is usually optional if the name of the column matches
+   * the name of the parent table followed by an {@code _id} suffix.
    *
    * <p>For example, given the parent table is {@code country} and the child
    * table is {@code city}. By default, the annotation will use {@code country_id}
    * as the "foreign key" column of the {@code city} table.
    *
-   * @return the name of the "foreing key" column of the entity table
+   * @return the name of the "foreign key" column of the entity table
    */
   String foreignKey() default "";
 

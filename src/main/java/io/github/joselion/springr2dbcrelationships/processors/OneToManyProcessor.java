@@ -43,17 +43,7 @@ public record OneToManyProcessor(
     final var byColumn = Optional.of(annotation)
       .map(OneToMany::sortBy)
       .filter(not(String::isBlank))
-      .or(() ->
-        this
-          .createdAtFieldOf(this.entity)
-          .map(this::columnNameOf)
-      )
-      .or(() ->
-        Maybe.of("createdAt")
-          .solve(innerType::getDeclaredField)
-          .map(this::columnNameOf)
-          .toOptional()
-      )
+      .or(() -> this.createdColumnOf(this.entity))
       .map(sortBy -> Sort.by(annotation.sortIn(), sortBy))
       .orElseGet(Sort::unsorted);
 

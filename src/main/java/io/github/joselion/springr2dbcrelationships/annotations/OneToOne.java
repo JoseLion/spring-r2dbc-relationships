@@ -41,15 +41,15 @@ public @interface OneToOne {
   boolean backReference() default false;
 
   /**
-   * Used to specify the name of the "foreing key" column on the child table.
-   * This is usually not necessary if the name of the column matches the name
-   * of the parent table followed by an {@code _id} suffix.
+   * Used to specify the name of the "foreign key" column on the child table.
+   * This is usually optional if the name of the column matches the name of the
+   * parent table followed by an {@code _id} suffix.
    * 
    * <p>For example, given the parent table is {@code phone} and the child
    * table is {@code phone_details}. By default, the annotation will look for
    * the "foreign key" column {@code phone_id} in the {@code phone_details} table.
    *
-   * @return the name of the "foreing key" column
+   * @return the name of the "foreign key" column
    */
   String mappedBy() default "";
 

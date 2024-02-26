@@ -3,6 +3,8 @@ package io.github.joselion.springr2dbcrelationships.processors;
 import static org.assertj.core.api.Assertions.assertThat;
 import static reactor.function.TupleUtils.consumer;
 
+import java.time.Duration;
+
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,13 +31,13 @@ import reactor.core.publisher.Mono;
   @Autowired
   private TownRepository townRepo;
 
-  private final City newYork = City.of("New York");
-
-  private final City boston = City.of("Boston");
-
-  private final City chicago = City.of("Chicago");
-
   private final Country usa = Country.of("United States of America");
+
+  private final String newYork = "New York";
+
+  private final String boston = "Boston";
+
+  private final String chicago = "Chicago";
 
   @Nested class populate {
     @Test void populates_the_field_with_the_parent_entity() {
@@ -43,9 +45,11 @@ import reactor.core.publisher.Mono;
         .map(Country::id)
         .zipWhen(id ->
           Flux.just(newYork, boston, chicago)
+            .delayElements(Duration.ofMillis(10))
+            .map(City::of)
             .map(city -> city.withCountryId(id))
             .publish(cityRepo::saveAll)
-            .then(cityRepo.findByName(boston.name()))
+            .then(cityRepo.findByName(boston))
         )
         .as(TxStepVerifier::withRollback)
         .assertNext(consumer((countryId, city) -> {
@@ -55,7 +59,7 @@ import reactor.core.publisher.Mono;
           assertThat(city.country().cities())
             .allSatisfy(c -> assertThat(c.country()).isNull())
             .extracting(City::name)
-            .containsExactly(newYork.name(), boston.name(), chicago.name());
+            .containsExactly(chicago, boston, newYork);
         }))
         .verifyComplete();
     }
@@ -67,7 +71,7 @@ import reactor.core.publisher.Mono;
         countryRepo.save(usa)
           .map(saved -> saved.withName("USA"))
           .map(updated ->
-            boston
+            City.of(boston)
               .withCountry(updated)
               .withCountryId(updated.id())
           )
@@ -79,7 +83,7 @@ import reactor.core.publisher.Mono;
             assertThat(found.name()).isEqualTo(usa.name());
             assertThat(found.cities())
               .extracting(City::name)
-              .containsExactly(boston.name());
+              .containsExactly(boston);
           })
           .verifyComplete();
 
