@@ -38,47 +38,60 @@ public record OneToOneProcessor(
       .isPresent();
     final var mappedBy = Optional.of(annotation)
       .map(OneToOne::mappedBy)
-      .filter(not(String::isBlank))
-      .orElseGet(() -> {
-        final var prefix = isBackReference
-          ? this.tableNameOf(fieldType)
-          : this.table.getReference();
-
-        return prefix.concat("_id");
-      });
+      .filter(not(String::isBlank));
 
     if (isBackReference) {
       final var parentId = this.idColumnOf(fieldType);
-      final var mappedField = Commons.toCamelCase(mappedBy);
-      final var fkValue = Optional.of(this.entity)
-        .map(Reflect.getter(mappedField))
+      final var byTable = this.tableNameOf(fieldType).concat("_id");
+      final var byField = Commons.toSnakeCase(field.getName()).concat("_id");
+      final var mappedField = mappedBy
+        .map(Commons::toCamelCase)
+        .or(() -> this.inferForeignField(byTable).map(Field::getName))
+        .or(() -> this.inferForeignField(byField).map(Field::getName))
         .orElseThrow(() -> {
           final var entityType = this.domainFor(this.entity.getClass());
-          final var message = "Entity <%s> is missing foreign key in field: %s".formatted(
-            entityType.getName(),
-            mappedField
-          );
-
+          final var message = """
+            Unable to infer foreign key for "%s" entity. Neither "%s" nor "%s"
+            associated fields could be found
+            """
+            .formatted(entityType.getSimpleName(), byTable, byField);
           return RelationshipException.of(message);
         });
 
-      return this.template
-        .select(fieldType)
-        .as(fieldProjection)
-        .matching(query(where(parentId).is(fkValue)))
-        .one()
-        .map(Commons::cast);
+      return Mono.just(this.entity)
+        .mapNotNull(Reflect.getter(mappedField))
+        .flatMap(fkValue ->
+          this.template
+            .select(fieldType)
+            .as(fieldProjection)
+            .matching(query(where(parentId).is(fkValue)))
+            .one()
+        );
     }
 
     return Mono.just(this.entity)
       .mapNotNull(this::idValueOf)
-      .flatMap(entityId ->
-        this.template
+      .flatMap(entityId -> {
+        final var byTable = this.table.getReference().concat("_id");
+        final var byField = Commons.toSnakeCase(field.getName()).concat("_id");
+        final var mappedField = mappedBy
+          .or(() -> this.inferForeignField(byTable, fieldType).map(this::columnNameOf))
+          .or(() -> this.inferForeignField(byField, fieldType).map(this::columnNameOf))
+          .orElseThrow(() -> {
+            final var message = """
+              Unable to infer foreign key for "%s" entity. Neither "%s" nor "%s"
+              associated fields could be found
+              """
+              .formatted(fieldType.getSimpleName(), byTable, byField);
+            return RelationshipException.of(message);
+          });
+
+        return this.template
           .select(fieldType)
           .as(fieldProjection)
-          .matching(query(where(mappedBy).is(entityId)))
-          .one()
-      );
+          .matching(query(where(mappedField).is(entityId)))
+          .one();
+      });
   }
 
   @Override

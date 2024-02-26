@@ -27,12 +27,20 @@ public @interface ManyToOne {
 
   /**
    * Used to specify the name of the "foreign key" column in the current
-   * entity's table. This is usually optional if the name of the column matches
-   * the name of the parent table followed by an {@code _id} suffix.
+   * entity's table. This is usually optional because the anotation can infer
+   * the "foreign key" column name in two different ways:
    *
-   * <p>For example, given the parent table is {@code country} and the child
-   * table is {@code city}. By default, the annotation will use {@code country_id}
-   * as the "foreign key" column of the {@code city} table.
+   * <p>1. The name of the column matches the name of the parent table
+   * followed by an {@code _id} suffix.
+   *
+   * <p>2. The name of the column matches the name of the annotated field
+   * followed by an {@code _id} suffix.
+   *
+   * <p>For example, given a parent table {@code country}, a child table
+   * {@code city}, and the annotated field {@code @OneToMany Country originCountry;}.
+   * By default, the "foreign key" column of the {@code city} table will be
+   * inferred as {@code country_id} using option (1). If that fails, it will try
+   * {@code origin_country_id} using option (2).
    *
    * @return the name of the "foreign key" column of the entity table
    */
