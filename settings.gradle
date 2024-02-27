@@ -14,8 +14,8 @@ dependencyResolutionManagement {
 
       plugin('prettyJupiter', 'io.github.joselion.pretty-jupiter').version('3.2.0')
       plugin('publishPlugin', 'io.github.gradle-nexus.publish-plugin').version('2.0.0-rc-2')
-      plugin('sonarlint', 'name.remal.sonarlint').version('3.4.6')
-      plugin('spring-boot', 'org.springframework.boot').version('3.2.2')
+      plugin('sonarlint', 'name.remal.sonarlint').version('3.4.8')
+      plugin('spring-boot', 'org.springframework.boot').version('3.2.3')
       plugin('spring-management', 'io.spring.dependency-management').version('1.1.4')
       plugin('strictNullCheck', 'io.github.joselion.strict-null-check').version('3.3.0')
 
@@ -24,8 +24,6 @@ dependencyResolutionManagement {
       library('maybe', 'io.github.joselion', 'maybe').version('4.2.1')
       library('mockito-core', 'org.mockito', 'mockito-core').version('5.10.0')
       library('sonarlint-java', 'org.sonarsource.java', 'sonar-java-plugin').version('7.31.0.34839')
-      library('spring-data-r2dbc', 'org.springframework.data', 'spring-data-r2dbc').withoutVersion()
-      library('spring-webflux', 'org.springframework', 'spring-webflux').withoutVersion()
 
       library('h2', 'com.h2database', 'h2').withoutVersion()
       library('h2-r2dbc', 'io.r2dbc', 'r2dbc-h2').withoutVersion()
@@ -34,6 +32,8 @@ dependencyResolutionManagement {
       library('spring-boot-r2dbc', 'org.springframework.boot', 'spring-boot-starter-data-r2dbc').withoutVersion()
       library('spring-boot-webflux', 'org.springframework.boot', 'spring-boot-starter-webflux').withoutVersion()
       library('spring-boot-test', 'org.springframework.boot', 'spring-boot-starter-test').withoutVersion()
+      library('spring-data-r2dbc', 'org.springframework.data', 'spring-data-r2dbc').withoutVersion()
+      library('spring-webflux', 'org.springframework', 'spring-webflux').withoutVersion()
     }
   }
 }
