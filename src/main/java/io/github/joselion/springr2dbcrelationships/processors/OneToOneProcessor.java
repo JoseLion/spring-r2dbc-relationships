@@ -7,6 +7,7 @@ import static org.springframework.data.relational.core.query.Query.query;
 import java.lang.reflect.Field;
 import java.util.Optional;
 
+import org.springframework.context.ApplicationContext;
 import org.springframework.data.r2dbc.core.R2dbcEntityTemplate;
 import org.springframework.data.relational.core.sql.SqlIdentifier;
 
@@ -22,11 +23,13 @@ import reactor.core.publisher.Mono;
  * @param template the r2dbc entity template
  * @param entity the processed field entity
  * @param table the processed field entity table
+ * @param context the Spring application context
  */
 public record OneToOneProcessor(
   R2dbcEntityTemplate template,
   Object entity,
-  SqlIdentifier table
+  SqlIdentifier table,
+  ApplicationContext context
 ) implements Processable<OneToOne, Object> {
 
   @Override
@@ -113,7 +116,7 @@ public record OneToOneProcessor(
           .orElse(initial);
 
         return Mono.justOrEmpty(value)
-          .flatMap(this::upsert)
+          .flatMap(this::save)
           .switchIfEmpty(
             this.template
               .delete(fieldType)

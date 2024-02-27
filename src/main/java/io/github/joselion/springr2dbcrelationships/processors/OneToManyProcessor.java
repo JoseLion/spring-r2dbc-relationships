@@ -8,6 +8,7 @@ import java.lang.reflect.Field;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.context.ApplicationContext;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.r2dbc.core.R2dbcEntityTemplate;
 import org.springframework.data.relational.core.sql.SqlIdentifier;
@@ -26,11 +27,13 @@ import reactor.core.publisher.Mono;
  * @param template the r2dbc entity template
  * @param entity the processed field entity
  * @param table the processed field entity table
+ * @param context the Spring application context
  */
 public record OneToManyProcessor(
   R2dbcEntityTemplate template,
   Object entity,
-  SqlIdentifier table
+  SqlIdentifier table,
+  ApplicationContext context
 ) implements Processable<OneToMany, List<?>> {
 
   @Override
@@ -79,8 +82,8 @@ public record OneToManyProcessor(
           .orElseGet(List::of);
 
         return Flux.fromIterable(values)
-          .map(x -> Reflect.update(x, mappedField, entityId))
-          .flatMap(this::upsert)
+          .map(Reflect.update(mappedField, entityId))
+          .flatMap(this::save)
           .collectList()
           .delayUntil(children -> {
             final var innerId = this.idColumnOf(innerType);

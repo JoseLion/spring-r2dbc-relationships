@@ -183,6 +183,19 @@ public final class Reflect {
   }
 
   /**
+   * Curried version of {@link #update(Object, Field, Object)} overload.
+   *
+   * @param <T> the target type
+   * @param field the field to update
+   * @param value the value to update the field to
+   * @return a function that takes the target as argument and returns the
+   *         updated target
+   */
+  public static <T> Function<T, @Nullable T> update(final Field field, final Object value) {
+    return target -> Reflect.update(target, field, value);
+  }
+
+  /**
    * Updates a field using either a wither or a setter method. Then returns the
    * target with the updated field.
    *

@@ -48,9 +48,9 @@ public record RelationshipsCallbacks<T>(
 
   @Override
   public Publisher<T> onAfterConvert(final T entity, final SqlIdentifier table) {
-    final var oneToOneProcessor = new OneToOneProcessor(this.template, entity, table);
-    final var oneToManyProcessor = new OneToManyProcessor(this.template, entity, table);
-    final var manyToOneProcessor = new ManyToOneProcessor(this.template, entity, table);
+    final var oneToOneProcessor = new OneToOneProcessor(this.template, entity, table, this.context);
+    final var oneToManyProcessor = new OneToManyProcessor(this.template, entity, table, this.context);
+    final var manyToOneProcessor = new ManyToOneProcessor(this.template, entity, table, this.context);
     final var manyToManyProcessor = new ManyToManyProcessor(this.template, entity, table, this.context);
 
     return this.checkingCycles(entity)
@@ -93,8 +93,8 @@ public record RelationshipsCallbacks<T>(
 
   @Override
   public Publisher<T> onAfterSave(final T entity, final OutboundRow outboundRow, final SqlIdentifier table) {
-    final var oneToOneProcessor = new OneToOneProcessor(this.template, entity, table);
-    final var oneToManyProcessor = new OneToManyProcessor(this.template, entity, table);
+    final var oneToOneProcessor = new OneToOneProcessor(this.template, entity, table, this.context);
+    final var oneToManyProcessor = new OneToManyProcessor(this.template, entity, table, this.context);
     final var manyToManyProcessor = new ManyToManyProcessor(this.template, entity, table, this.context);
 
     return this.checkingCycles(entity)
@@ -146,7 +146,7 @@ public record RelationshipsCallbacks<T>(
           .filter(ManyToOne::persist)
           .zipWith(acc)
           .flatMap(function((annotation, nextEntity) -> {
-            final var manyToOneProcessor = new ManyToOneProcessor(this.template, nextEntity, table);
+            final var manyToOneProcessor = new ManyToOneProcessor(this.template, nextEntity, table, this.context);
             return manyToOneProcessor.persist(annotation, field);
           }))
           .map(Commons::<T>cast)

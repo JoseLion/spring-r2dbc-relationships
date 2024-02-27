@@ -138,7 +138,7 @@ public record ManyToManyProcessor(
       )
       .flatMap(function((id, joinTable) ->
         Flux.fromIterable(values)
-          .flatMap(this::upsert)
+          .flatMap(this::save)
           .collectList()
           .filter(not(List::isEmpty))
           .delayUntil(items ->
