@@ -22,6 +22,7 @@ plugins {
 group = 'io.github.joselion'
 
 java {
+  sourceCompatibility = JavaLanguageVersion.of(17)
   toolchain {
     languageVersion = JavaLanguageVersion.of(21)
     vendor = JvmVendorSpec.ORACLE
