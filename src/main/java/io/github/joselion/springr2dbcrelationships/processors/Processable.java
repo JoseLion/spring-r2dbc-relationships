@@ -8,12 +8,15 @@ import java.util.Optional;
 import java.util.function.Function;
 
 import org.eclipse.jdt.annotation.Nullable;
+import org.springframework.context.ApplicationContext;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.domain.Auditable;
 import org.springframework.data.mapping.PersistentEntity;
 import org.springframework.data.r2dbc.core.R2dbcEntityTemplate;
+import org.springframework.data.r2dbc.repository.R2dbcRepository;
 import org.springframework.data.relational.core.mapping.RelationalPersistentProperty;
 import org.springframework.data.relational.core.sql.SqlIdentifier;
+import org.springframework.data.repository.support.Repositories;
 
 import io.github.joselion.maybe.Maybe;
 import io.github.joselion.springr2dbcrelationships.annotations.ProjectionOf;
@@ -94,6 +97,13 @@ public interface Processable<T extends Annotation, U> {
   SqlIdentifier table();
 
   /**
+   * Returns the Spring application context.
+   *
+   * @return the application context
+   */
+  ApplicationContext context();
+
+  /**
    * Returns {@code true} if the entity is considered to be new, {@code false}
    * otherwise.
    *
@@ -111,18 +121,27 @@ public interface Processable<T extends Annotation, U> {
   }
 
   /**
-   * Inserts an entity when it's new or updates it otherwise.
+   * Inserts an entity when it's new or update it otherwise.
    *
    * @param <S> the entity type
+   * @param <I> the type of the entity identifier
    * @param entity the entity to insert/update
    * @return a publisher containing the inserted/updated entity
    */
-  default <S> Mono<S> upsert(final S entity) {
-    final var template = this.template();
+  default <S, I> Mono<S> save(final S entity) {
+    final var entityType = entity.getClass();
+    final var repositories = new Repositories(this.context());
 
-    return this.isNew(entity)
-      ? template.insert(entity)
-      : template.update(entity);
+    return Optional.of(entityType)
+      .flatMap(repositories::getRepositoryFor)
+      .filter(R2dbcRepository.class::isInstance)
+      .map(Commons::<R2dbcRepository<S, I>>cast)
+      .map(repository -> repository.save(entity))
+      .orElseGet(() ->
+        this.isNew(entity)
+          ? this.template().insert(entity)
+          : this.template().update(entity)
+      );
   }
 
   /**
