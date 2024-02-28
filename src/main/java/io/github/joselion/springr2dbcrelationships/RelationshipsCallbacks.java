@@ -5,8 +5,6 @@ import static reactor.function.TupleUtils.function;
 
 import java.util.List;
 import java.util.function.Function;
-import java.util.function.UnaryOperator;
-import java.util.stream.Stream;
 
 import org.reactivestreams.Publisher;
 import org.springframework.context.ApplicationContext;
@@ -30,7 +28,6 @@ import io.github.joselion.springr2dbcrelationships.processors.OneToOneProcessor;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
-import reactor.util.context.Context;
 import reactor.util.function.Tuples;
 
 /**
@@ -53,7 +50,7 @@ public record RelationshipsCallbacks<T>(
     final var manyToOneProcessor = new ManyToOneProcessor(this.template, entity, table, this.context);
     final var manyToManyProcessor = new ManyToManyProcessor(this.template, entity, table, this.context);
 
-    return this.checkingCycles(entity)
+    return Mono.just(entity)
       .map(T::getClass)
       .map(Class::getDeclaredFields)
       .flatMapMany(Flux::fromArray)
@@ -87,8 +84,7 @@ public record RelationshipsCallbacks<T>(
 
         return Reflect.update(acc, field, value);
       })
-      .defaultIfEmpty(entity)
-      .contextWrite(this.addToContextStack(entity));
+      .defaultIfEmpty(entity);
   }
 
   @Override
@@ -97,7 +93,7 @@ public record RelationshipsCallbacks<T>(
     final var oneToManyProcessor = new OneToManyProcessor(this.template, entity, table, this.context);
     final var manyToManyProcessor = new ManyToManyProcessor(this.template, entity, table, this.context);
 
-    return this.checkingCycles(entity)
+    return Mono.just(entity)
       .map(T::getClass)
       .map(Class::getDeclaredFields)
       .flatMapIterable(List::of)
@@ -130,13 +126,12 @@ public record RelationshipsCallbacks<T>(
 
         return Reflect.update(acc, field, value);
       })
-      .defaultIfEmpty(entity)
-      .contextWrite(this.addToContextStack(entity));
+      .defaultIfEmpty(entity);
   }
 
   @Override
   public Publisher<T> onBeforeConvert(final T entity, final SqlIdentifier table) {
-    return this.checkingCycles(entity)
+    return Mono.just(entity)
       .map(T::getClass)
       .map(Class::getDeclaredFields)
       .flatMapIterable(List::of)
@@ -153,31 +148,6 @@ public record RelationshipsCallbacks<T>(
           .switchIfEmpty(acc)
       )
       .flatMap(Function.identity())
-      .defaultIfEmpty(entity)
-      .contextWrite(this.addToContextStack(entity));
-  }
-
-  private UnaryOperator<Context> addToContextStack(final T entity) {
-    return ctx -> {
-      final var typeName = entity.getClass().getName();
-      final var stack = ctx.<List<String>>getOrEmpty(RelationshipsCallbacks.class)
-        .map(List::stream)
-        .map(prev -> Stream.concat(prev, Stream.of(typeName)))
-        .map(Stream::toList)
-        .orElse(List.of(typeName));
-
-      return ctx.put(RelationshipsCallbacks.class, stack);
-    };
-  }
-
-  private <S> Mono<S> checkingCycles(final S data) {
-    return Mono.deferContextual(ctx -> {
-      final var stack = ctx.<List<String>>getOrEmpty(RelationshipsCallbacks.class);
-
-      return Mono.justOrEmpty(stack)
-        .defaultIfEmpty(List.of())
-        .filter(s -> s.size() == s.stream().distinct().count())
-        .map(x -> data);
-    });
+      .defaultIfEmpty(entity);
   }
 }

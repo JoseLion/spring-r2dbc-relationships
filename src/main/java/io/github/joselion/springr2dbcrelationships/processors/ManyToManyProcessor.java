@@ -14,8 +14,10 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import org.springframework.context.ApplicationContext;
 import org.springframework.data.mapping.callback.ReactiveEntityCallbacks;
@@ -23,7 +25,6 @@ import org.springframework.data.r2dbc.core.R2dbcEntityTemplate;
 import org.springframework.data.r2dbc.mapping.event.AfterConvertCallback;
 import org.springframework.data.relational.core.sql.SqlIdentifier;
 
-import io.github.joselion.springr2dbcrelationships.RelationshipsCallbacks;
 import io.github.joselion.springr2dbcrelationships.annotations.ManyToMany;
 import io.github.joselion.springr2dbcrelationships.annotations.OneToMany;
 import io.github.joselion.springr2dbcrelationships.exceptions.RelationshipException;
@@ -74,7 +75,7 @@ public record ManyToManyProcessor(
       .map("b."::concat)
       .collect(joining(", "));
     final var partialStatement = """
-      SELECT DISTINCT %s FROM %s AS b
+      SELECT %s FROM %s AS b
         LEFT JOIN %s AS j ON j.%s = b.%s
       WHERE j.%s = $1
       %s
@@ -89,46 +90,45 @@ public record ManyToManyProcessor(
       .flatMap(statement ->
         Mono.just(this.entity)
           .mapNotNull(this::idValueOf)
-          .flatMapMany(id ->
+          .flatMap(entityId ->
+            Mono.deferContextual(ctx -> {
+              final var store = ctx.getOrDefault(ManyToMany.class, List.<Object>of());
+
+              return Flux.fromIterable(store)
+                .filter(entityId::equals)
+                .collectList()
+                .filter(List::isEmpty)
+                .map(x -> entityId);
+            })
+          )
+          .flatMap(entityId ->
             this.template
               .getDatabaseClient()
               .sql(statement)
-              .bind(0, id)
+              .bind(0, entityId)
               .map((row, meta) -> this.template.getConverter().read(innerType, row, meta))
               .all()
+              .flatMap(this.withCallbacksOf(innerType), 1)
+              .collectList()
+              .contextWrite(ctx -> {
+                final var store = ctx.getOrDefault(ManyToMany.class, List.<Object>of());
+                final var next = Stream.concat(store.stream(), Stream.of(entityId)).toList();
+
+                return ctx.put(ManyToMany.class, next);
+              })
           )
-          .flatMap(value ->
-            ReactiveEntityCallbacks
-              .create(this.context)
-              .callback(
-                AfterConvertCallback.class,
-                value,
-                this.tableIdentifierOf(innerType)
-              )
-          )
-          .collectList()
       );
   }
 
   @Override
   public Mono<List<?>> persist(final ManyToMany annotation, final Field field) {
-    final var entityType = this.domainFor(this.entity.getClass());
-    final var innerType = this.domainFor(Reflect.innerTypeOf(field));
-    final var entityTable = this.tableNameOf(entityType);
-    final var innerTable = this.tableNameOf(innerType);
-    final var mappedBy = Optional.of(annotation)
-      .map(ManyToMany::mappedBy)
-      .filter(not(String::isBlank))
-      .orElseGet(() -> entityTable.concat("_id"));
-    final var linkedBy = Optional.of(annotation)
-      .map(ManyToMany::linkedBy)
-      .filter(not(String::isBlank))
-      .orElseGet(() -> innerTable.concat("_id"));
-    final var values = Optional.of(this.entity)
-      .map(Reflect.<List<?>>getter(field))
-      .orElseGet(List::of);
+    final var values = Reflect.<List<?>>getter(this.entity, field);
 
-    return this.checkingBackRef(innerType, this.entity)
+    if (values == null) {
+      return Mono.empty();
+    }
+
+    return Mono.just(this.entity)
       .mapNotNull(this::idValueOf)
       .zipWith(
         Mono.just(annotation)
@@ -136,20 +136,51 @@ public record ManyToManyProcessor(
           .filter(not(String::isBlank))
           .switchIfEmpty(this.findJoinTable(field))
       )
-      .flatMap(function((id, joinTable) ->
-        Flux.fromIterable(values)
+      .flatMap(function((entityId, joinTable) -> {
+        final var entityType = this.domainFor(this.entity.getClass());
+        final var innerType = this.domainFor(Reflect.innerTypeOf(field));
+        final var entityTable = this.tableNameOf(entityType);
+        final var innerTable = this.tableNameOf(innerType);
+        final var mappedBy = Optional.of(annotation)
+          .map(ManyToMany::mappedBy)
+          .filter(not(String::isBlank))
+          .orElseGet(() -> entityTable.concat("_id"));
+        final var linkedBy = Optional.of(annotation)
+          .map(ManyToMany::linkedBy)
+          .filter(not(String::isBlank))
+          .orElseGet(() -> innerTable.concat("_id"));
+
+        if (values.isEmpty()) {
+          return this.template
+            .getDatabaseClient()
+            .sql("DELETE FROM %s WHERE %s = $1".formatted(joinTable, mappedBy))
+            .bind(0, entityId)
+            .fetch()
+            .rowsUpdated()
+            .map(x -> List.of());
+        }
+
+        return Flux.fromIterable(values)
+          .map(value ->
+            stream(value.getClass().getDeclaredFields())
+              .filter(vf -> vf.isAnnotationPresent(ManyToMany.class))
+              .filter(vf -> this.domainFor(Reflect.innerTypeOf(vf)).equals(entityType))
+              .reduce(
+                value,
+                (acc, vf) -> Reflect.update(acc, vf, null),
+                (a, b) -> b
+              )
+          )
           .flatMap(this::save)
           .collectList()
-          .filter(not(List::isEmpty))
-          .delayUntil(items ->
-            Flux.fromIterable(items)
-              .filter(item ->
-                values
-                  .stream()
-                  .filter(this::isNew)
-                  .map(this::idValueOf)
-                  .anyMatch(not(isEqual(this.idValueOf(item))))
-              )
+          .delayUntil(items -> {
+            final var newIds = values.stream()
+              .filter(this::isNew)
+              .map(this::idValueOf)
+              .toList();
+
+            return Flux.fromIterable(items)
+              .filter(item -> newIds.stream().anyMatch(not(isEqual(this.idValueOf(item)))))
               .collectList()
               .filter(not(List::isEmpty))
               .flatMap(newItems -> {
@@ -169,12 +200,12 @@ public record ManyToManyProcessor(
                 return this.template
                   .getDatabaseClient()
                   .sql(statement)
-                  .bind(0, id)
+                  .bind(0, entityId)
                   .bindValues(params)
                   .fetch()
                   .rowsUpdated();
-              })
-          )
+              });
+          })
           .delayUntil(items -> {
             final var paramsTemplate = IntStream.range(2, items.size() + 2)
               .mapToObj(i -> "$" + i)
@@ -192,21 +223,12 @@ public record ManyToManyProcessor(
             return this.template
               .getDatabaseClient()
               .sql(statement)
-              .bind(0, id)
+              .bind(0, entityId)
               .bindValues(params)
               .fetch()
               .rowsUpdated();
-          })
-          .switchIfEmpty(
-            this.template
-              .getDatabaseClient()
-              .sql("DELETE FROM %s WHERE %s = $1".formatted(joinTable, mappedBy))
-              .bind(0, id)
-              .fetch()
-              .rowsUpdated()
-              .map(x -> List.of())
-          )
-      ));
+          });
+      }));
   }
 
   private Mono<String> findJoinTable(final String left, final String right) {
@@ -242,14 +264,13 @@ public record ManyToManyProcessor(
       );
   }
 
-  private <S> Mono<S> checkingBackRef(final Class<?> type, final S value) {
-    return Mono.deferContextual(ctx -> {
-      final var stack = ctx.<List<String>>getOrEmpty(RelationshipsCallbacks.class);
+  private <T> Function<T, Mono<T>> withCallbacksOf(final Class<?> type) {
+    return value -> {
+      final var tableId = this.tableIdentifierOf(type);
 
-      return Mono.justOrEmpty(stack)
-        .defaultIfEmpty(List.of())
-        .filter(not(s -> s.size() >= 2 && s.get(s.size() - 2).equals(type.getName())))
-        .map(x -> value);
-    });
+      return ReactiveEntityCallbacks.create(this.context)
+        .callback(AfterConvertCallback.class, value, tableId)
+        .defaultIfEmpty(value);
+    };
   }
 }

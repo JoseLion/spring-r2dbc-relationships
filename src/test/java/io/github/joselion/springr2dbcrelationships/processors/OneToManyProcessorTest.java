@@ -1,6 +1,7 @@
 package io.github.joselion.springr2dbcrelationships.processors;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static reactor.function.TupleUtils.consumer;
 import static reactor.function.TupleUtils.function;
 
 import java.time.Duration;
@@ -17,6 +18,7 @@ import io.github.joselion.springr2dbcrelationships.models.country.CountryReposit
 import io.github.joselion.testing.annotations.IntegrationTest;
 import io.github.joselion.testing.transactional.TxStepVerifier;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 @IntegrationTest class OneToManyProcessorTest {
 
@@ -50,7 +52,7 @@ import reactor.core.publisher.Flux;
         .assertNext(found -> {
           assertThat(found.id()).isNotNull();
           assertThat(found.cities())
-            .isNotEmpty()
+            .allSatisfy(city -> assertThat(city.country()).isNull())
             .extracting(City::name)
             .containsExactly(chicago, boston, newYork);
         })
@@ -168,7 +170,7 @@ import reactor.core.publisher.Flux;
     }
 
     @Nested class when_the_children_field_is_null {
-      @Test void deletes_all_the_orphan_children() {
+      @Test void ignores_the_field_associations() {
         Flux.just(newYork, boston, chicago)
           .map(City::of)
           .collectList()
@@ -176,13 +178,19 @@ import reactor.core.publisher.Flux;
           .flatMap(countryRepo::save)
           .map(saved -> saved.withCities(null))
           .flatMap(countryRepo::save)
-          .map(Country::id)
-          .flatMapMany(cityRepo::findByCountryId)
-          .collectList()
+          .zipWhen(updated ->
+            Mono.just(updated)
+              .map(Country::id)
+              .flatMapMany(cityRepo::findByCountryId)
+              .collectList()
+          )
           .as(TxStepVerifier::withRollback)
-          .assertNext(found -> {
-            assertThat(found).isEmpty();
-          })
+          .assertNext(consumer((updated, found) -> {
+            assertThat(updated.cities()).isNull();
+            assertThat(found)
+              .extracting(City::name)
+              .contains(chicago, boston, newYork);
+          }))
           .verifyComplete();
       }
     }

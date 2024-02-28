@@ -45,14 +45,59 @@ import reactor.util.function.Tuples;
 
   @Nested class populate {
     @Test void populates_the_field_with_the_joined_entities() throws InterruptedException {
+      final var chrisTolkin = Author.of("Christopher Tolkien");
+      final var ringsWar = "The War of the Ring";
+
       tolkienTrilogy()
+        .delayUntil(function((books, author) ->
+          Mono.just(ringsWar)
+            .map(Book::of)
+            .flatMap(bookRepo::save)
+            .map(book -> List.of(books.get(1), book))
+            .zipWith(authorRepo.save(chrisTolkin))
+            .delayUntil(function((chrisBooks, chris) ->
+              Flux.fromIterable(chrisBooks)
+                .map(cb -> AuthorBook.of(chris.id(), cb.id()))
+                .publish(authorBookRepo::saveAll)
+            ))
+        ))
         .map(function((books, author) -> author.id()))
         .flatMap(authorRepo::findById)
         .as(TxStepVerifier::withRollback)
-        .assertNext(author -> {
-          assertThat(author.books())
+        .assertNext(found -> {
+          assertThat(found.books())
+            .allSatisfy(book -> assertThat(book.authors()).isNotNull())
             .extracting(Book::title)
             .containsExactly(kingsReturn, twoTowers, fellowship);
+
+          final var tolkienKingsReturn = found.books().get(0);
+          final var tolkienTwoTowers = found.books().get(1);
+          final var tolkienFellowship = found.books().get(2);
+          assertThat(tolkienKingsReturn.authors())
+            .allSatisfy(author -> assertThat(author.books()).isNull())
+            .extracting(Author::name)
+            .containsExactly(tolkien.name());
+          assertThat(tolkienFellowship.authors())
+            .allSatisfy(author -> assertThat(author.books()).isNull())
+            .extracting(Author::name)
+            .containsExactly(tolkien.name());
+          assertThat(tolkienTwoTowers.authors())
+            .extracting(Author::name)
+            .containsExactly(chrisTolkin.name(), tolkien.name());
+
+          final var twoTowersChris = tolkienTwoTowers.authors().get(0);
+          final var twoTowersTolkien = tolkienTwoTowers.authors().get(1);
+          assertThat(twoTowersTolkien.books()).isNull();
+          assertThat(twoTowersChris.books())
+            .extracting(Book::title)
+            .containsExactly(ringsWar, twoTowers);
+
+          final var chrisRingsWar = twoTowersChris.books().get(0);
+          final var chrisTwoTowers = twoTowersChris.books().get(1);
+          assertThat(chrisTwoTowers.authors()).isNull();
+          assertThat(chrisRingsWar.authors())
+            .extracting(Author::name)
+            .containsExactly(chrisTolkin.name());
         })
         .verifyComplete();
     }
@@ -108,6 +153,8 @@ import reactor.util.function.Tuples;
             )
             .as(TxStepVerifier::withRollback)
             .assertNext(consumer((author, books) -> {
+              // System.err.println("******************* " + author);
+              // System.err.println("=================== " + books);
               assertThat(author.books())
                 .allSatisfy(book -> assertThat(book.id()).isNotNull())
                 .extracting(Book::title)
@@ -203,7 +250,7 @@ import reactor.util.function.Tuples;
     }
 
     @Nested class when_the_items_field_is_null {
-      @Test void deletes_all_the_orphan_join_links() {
+      @Test void ignores_the_field_associations() {
         tolkienTrilogy()
           .map(function((books, author) -> author.withBooks(null)))
           .flatMap(authorRepo::save)
@@ -219,8 +266,8 @@ import reactor.util.function.Tuples;
           )
           .as(TxStepVerifier::withRollback)
           .assertNext(consumer((author, joins, books) -> {
-            assertThat(author.books()).isEmpty();
-            assertThat(joins).isEmpty();
+            assertThat(author.books()).isNull();
+            assertThat(joins).hasSameSizeAs(books);
             assertThat(books)
               .allSatisfy(book -> assertThat(book.id()).isNotNull())
               .extracting(Book::title)
