@@ -52,12 +52,12 @@ import reactor.core.publisher.Mono;
             .then(cityRepo.findByName(boston))
         )
         .as(TxStepVerifier::withRollback)
-        .assertNext(consumer((countryId, city) -> {
-          assertThat(city.countryId()).isEqualTo(countryId);
-          assertThat(city.country()).isNotNull();
-          assertThat(city.country().id()).isEqualTo(countryId);
-          assertThat(city.country().cities())
-            .allSatisfy(c -> assertThat(c.country()).isNull())
+        .assertNext(consumer((countryId, found) -> {
+          assertThat(found.countryId()).isEqualTo(countryId);
+          assertThat(found.country()).isNotNull();
+          assertThat(found.country().id()).isEqualTo(countryId);
+          assertThat(found.country().cities())
+            .allSatisfy(city -> assertThat(city.country()).isNull())
             .extracting(City::name)
             .containsExactly(chicago, boston, newYork);
         }))

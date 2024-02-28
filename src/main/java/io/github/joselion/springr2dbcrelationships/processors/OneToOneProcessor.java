@@ -5,7 +5,10 @@ import static org.springframework.data.relational.core.query.Criteria.where;
 import static org.springframework.data.relational.core.query.Query.query;
 
 import java.lang.reflect.Field;
+import java.util.List;
 import java.util.Optional;
+import java.util.function.Function;
+import java.util.stream.Stream;
 
 import org.springframework.context.ApplicationContext;
 import org.springframework.data.r2dbc.core.R2dbcEntityTemplate;
@@ -15,7 +18,9 @@ import io.github.joselion.springr2dbcrelationships.annotations.OneToOne;
 import io.github.joselion.springr2dbcrelationships.exceptions.RelationshipException;
 import io.github.joselion.springr2dbcrelationships.helpers.Commons;
 import io.github.joselion.springr2dbcrelationships.helpers.Reflect;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
 
 /**
  * The {@link OneToOne} annotation processor.
@@ -34,6 +39,7 @@ public record OneToOneProcessor(
 
   @Override
   public Mono<Object> populate(final OneToOne annotation, final Field field) {
+    final var entityType = this.domainFor(this.entity.getClass());
     final var fieldProjection = field.getType();
     final var fieldType = this.domainFor(fieldProjection);
     final var isBackReference = Optional.of(annotation)
@@ -52,7 +58,6 @@ public record OneToOneProcessor(
         .or(() -> this.inferForeignField(byTable).map(Field::getName))
         .or(() -> this.inferForeignField(byField).map(Field::getName))
         .orElseThrow(() -> {
-          final var entityType = this.domainFor(this.entity.getClass());
           final var message = """
             Unable to infer foreign key for "%s" entity. Neither "%s" nor "%s"
             associated fields could be found
@@ -63,17 +68,20 @@ public record OneToOneProcessor(
 
       return Mono.just(this.entity)
         .mapNotNull(Reflect.getter(mappedField))
+        .flatMap(this::breakOnCycle)
         .flatMap(fkValue ->
           this.template
             .select(fieldType)
             .as(fieldProjection)
             .matching(query(where(parentId).is(fkValue)))
             .one()
+            .contextWrite(this.storeOf(fkValue))
         );
     }
 
     return Mono.just(this.entity)
       .mapNotNull(this::idValueOf)
+      .flatMap(this::breakOnCycle)
       .flatMap(entityId -> {
         final var byTable = this.table.getReference().concat("_id");
         final var byField = Commons.toSnakeCase(field.getName()).concat("_id");
@@ -93,7 +101,8 @@ public record OneToOneProcessor(
           .select(fieldType)
           .as(fieldProjection)
           .matching(query(where(mappedField).is(entityId)))
-          .one();
+          .one()
+          .contextWrite(this.storeOf(entityId));
       });
   }
 
@@ -125,5 +134,26 @@ public record OneToOneProcessor(
               .then(Mono.empty())
           );
       });
+  }
+
+  private Mono<Object> breakOnCycle(final Object entityId) {
+    return Mono.deferContextual(ctx -> {
+      final var store = ctx.<List<Object>>getOrDefault(OneToOne.class, List.of());
+
+      return Flux.fromIterable(store)
+        .filter(entityId::equals)
+        .collectList()
+        .filter(List::isEmpty)
+        .map(x -> entityId);
+    });
+  }
+
+  private Function<Context, Context> storeOf(final Object entityId) {
+    return ctx -> {
+      final var store = ctx.getOrDefault(OneToOne.class, List.<Object>of());
+      final var next = Stream.concat(store.stream(), Stream.of(entityId)).toList();
+
+      return ctx.put(OneToOne.class, next);
+    };
   }
 }

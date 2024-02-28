@@ -45,6 +45,7 @@ import reactor.core.publisher.Mono;
 
             assertThat(found.id()).isNotNull();
             assertThat(phoneDetails).isNotNull();
+            assertThat(phoneDetails.phone()).isNull();
             assertThat(phoneDetails.id()).isNotNull();
             assertThat(phoneDetails.phoneId()).isEqualTo(found.id());
             assertThat(phoneDetails.provider()).isEqualTo(details.provider());
@@ -64,14 +65,12 @@ import reactor.core.publisher.Mono;
           .flatMap(phoneDetailsRepo::findById)
           .as(TxStepVerifier::withRollback)
           .assertNext(found -> {
-            assertThat(found.phone()).isNotNull();
-            assertThat(found.phone().id()).isNotNull();
-            assertThat(found.phone().number()).isEqualTo(phone.number());
-            assertThat(found.phone().phoneDetails().phone()).isNull();
-            assertThat(found.phone().phoneDetails())
-              .usingRecursiveComparison()
-              .ignoringFields("phone")
-              .isEqualTo(found);
+            final var parent = found.phone();
+
+            assertThat(parent).isNotNull();
+            assertThat(parent.phoneDetails()).isNull();
+            assertThat(parent.id()).isNotNull();
+            assertThat(parent.number()).isEqualTo(phone.number());
           })
           .verifyComplete();
       }

@@ -7,6 +7,7 @@ import static org.springframework.data.relational.core.query.Query.query;
 import java.lang.reflect.Field;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 import org.springframework.context.ApplicationContext;
 import org.springframework.data.domain.Sort;
@@ -54,17 +55,40 @@ public record OneToManyProcessor(
     return Mono.just(this.entity)
       .mapNotNull(this::idValueOf)
       .flatMap(entityId ->
+        Mono.deferContextual(ctx -> {
+          final var store = ctx.<List<Object>>getOrDefault(OneToMany.class, List.of());
+
+          return Flux.fromIterable(store)
+            .filter(entityId::equals)
+            .collectList()
+            .filter(List::isEmpty)
+            .map(x -> entityId);
+        })
+      )
+      .flatMap(entityId ->
         this.template
           .select(innerType)
           .as(innerProjection)
           .matching(query(where(mappedBy).is(entityId)).sort(byColumn))
           .all()
           .collectList()
+          .contextWrite(ctx -> {
+            final var store = ctx.<List<Object>>getOrDefault(OneToMany.class, List.of());
+            final var next = Stream.concat(store.stream(), Stream.of(entityId)).toList();
+
+            return ctx.put(OneToMany.class, next);
+          })
       );
   }
 
   @Override
   public Mono<List<?>> persist(final OneToMany annotation, final Field field) {
+    final var values = Reflect.<List<?>>getter(this.entity, field);
+
+    if (values == null) {
+      return Mono.empty();
+    }
+
     return Mono.just(this.entity)
       .mapNotNull(this::idValueOf)
       .flatMap(entityId -> {
@@ -77,9 +101,6 @@ public record OneToManyProcessor(
           .map(Commons::toCamelCase)
           .solve(innerType::getDeclaredField)
           .orThrow(RelationshipException::of);
-        final var values = Optional.of(this.entity)
-          .map(Reflect.<List<?>>getter(field))
-          .orElseGet(List::of);
 
         return Flux.fromIterable(values)
           .map(Reflect.update(mappedField, entityId))
