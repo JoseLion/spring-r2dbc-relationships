@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.tuple;
 import static reactor.function.TupleUtils.consumer;
 import static reactor.function.TupleUtils.function;
 
+import java.time.Duration;
 import java.util.List;
 
 import org.junit.jupiter.api.Nested;
@@ -55,6 +56,7 @@ import reactor.core.publisher.Mono;
         .delayUntil(id ->
           Flux.just(newYork, boston, chicago)
             .map(City::of)
+            .delayElements(Duration.ofMillis(1))
             .map(city -> city.withCountryId(id))
             .publish(cityRepo::saveAll)
         )
