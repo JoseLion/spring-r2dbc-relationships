@@ -17,7 +17,7 @@ public class Transactions {
       tx.setRollbackOnly();
       return publisher;
     })
-    .next();
+    .singleOrEmpty();
   }
 
   static <T> Flux<T> withRollback(final Flux<T> publisher) {

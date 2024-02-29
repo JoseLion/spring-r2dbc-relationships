@@ -29,6 +29,21 @@ import org.springframework.data.domain.Sort.Direction;
 public @interface OneToMany {
 
   /**
+   * Whether orphan entities are preserved or not. Defaults to {@code false}.
+   *
+   * <p>Usually, one-to-many relationships have a parent-children configuration,
+   * meaning every child needs a parent assigned to it. By default, the
+   * annotation will delete orphan entites, or children which are no longer
+   * assigned to their parent. You can prevent this behavior by setting this
+   * option to {@code true}, in which case the annotation will only remove the
+   * link of the orphan entities with the parent.
+   *
+   * @return {@code true} if orphan entities should be presereved, {@code false}
+   *         otherwise
+   */
+  boolean keepOrphans() default false;
+
+  /**
    * Used to specify the name of the "foreign key" column on the child table.
    * This is usually optional if the name of the column matches the name of the
    * parent table followed by an {@code _id} suffix.
@@ -42,10 +57,11 @@ public @interface OneToMany {
   String mappedBy() default "";
 
   /**
-   * Should the entities on the annotated field be readonly. I.e., the entities
-   * are never persisted. Defaults to {@code false}.
+   * Whether the entities on the annotated field are readonly or not. I.e., the
+   * children entities are never persisted. Defaults to {@code false}.
    *
-   * @return whether the annotated entity is readonly or not
+   * @return {@code true} if the children entities should be readonly, {@code false}
+   *         otherwise
    */
   boolean readonly() default false;
 

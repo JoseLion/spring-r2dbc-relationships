@@ -1,10 +1,11 @@
 package io.github.joselion.springr2dbcrelationships.processors;
 
+import static java.util.function.Predicate.not;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 import static reactor.function.TupleUtils.consumer;
 import static reactor.function.TupleUtils.function;
 
-import java.time.Duration;
 import java.util.List;
 
 import org.junit.jupiter.api.Nested;
@@ -15,6 +16,8 @@ import io.github.joselion.springr2dbcrelationships.models.city.City;
 import io.github.joselion.springr2dbcrelationships.models.city.CityRepository;
 import io.github.joselion.springr2dbcrelationships.models.country.Country;
 import io.github.joselion.springr2dbcrelationships.models.country.CountryRepository;
+import io.github.joselion.springr2dbcrelationships.models.town.Town;
+import io.github.joselion.springr2dbcrelationships.models.town.TownRepository;
 import io.github.joselion.testing.annotations.IntegrationTest;
 import io.github.joselion.testing.transactional.TxStepVerifier;
 import reactor.core.publisher.Flux;
@@ -28,6 +31,9 @@ import reactor.core.publisher.Mono;
   @Autowired
   private CityRepository cityRepo;
 
+  @Autowired
+  private TownRepository townRepo;
+
   private final Country usa = Country.of("United States of America");
 
   private final String newYork = "New York";
@@ -36,13 +42,18 @@ import reactor.core.publisher.Mono;
 
   private final String chicago = "Chicago";
 
+  private final String manhattan = "Manhattan";
+
+  private final String albuquerque = "Albuquerque";
+
+  private final String springfield = "Springfield";
+
   @Nested class populate {
     @Test void populates_the_field_with_the_children_entities() {
       countryRepo.save(usa)
         .map(Country::id)
         .delayUntil(id ->
           Flux.just(newYork, boston, chicago)
-            .delayElements(Duration.ofMillis(10))
             .map(City::of)
             .map(city -> city.withCountryId(id))
             .publish(cityRepo::saveAll)
@@ -122,50 +133,105 @@ import reactor.core.publisher.Mono;
     }
 
     @Nested class when_there_are_orphan_children {
-      @Test void persists_the_children_entities_and_delete_the_orphans() {
-        Flux.just(newYork, boston, chicago)
-          .map(City::of)
-          .collectList()
-          .map(usa::withCities)
-          .flatMap(countryRepo::save)
-          .map(saved -> {
-            final var nextCities = saved.cities()
-              .stream()
-              .filter(city -> city.name().length() > 6)
-              .toList();
-            return saved.withCities(nextCities);
-          })
-          .flatMap(countryRepo::save)
-          .map(Country::id)
-          .flatMapMany(cityRepo::findByCountryId)
-          .collectList()
-          .as(TxStepVerifier::withRollback)
-          .assertNext(result -> {
-            assertThat(result)
-              .extracting(City::name)
-              .containsExactly(newYork, chicago);
-          })
-          .verifyComplete();
+      @Nested class and_the_keepOrphans_option_is_false {
+        @Test void persists_the_children_entities_and_delete_the_orphans() {
+          Flux.just(newYork, boston, chicago)
+            .map(City::of)
+            .collectList()
+            .map(usa::withCities)
+            .flatMap(countryRepo::save)
+            .map(saved ->
+              saved.withCitiesBy(cities ->
+                cities.stream()
+                  .filter(not(city -> city.name().equals(boston)))
+                  .toList()
+              )
+            )
+            .flatMap(countryRepo::save)
+            .map(Country::id)
+            .flatMapMany(cityRepo::findByCountryId)
+            .collectList()
+            .as(TxStepVerifier::withRollback)
+            .assertNext(result -> {
+              assertThat(result)
+                .extracting(City::name)
+                .containsExactly(newYork, chicago);
+            })
+            .verifyComplete();
+        }
+      }
+
+      @Nested class and_the_keepOrphans_option_is_true {
+        @Test void persists_the_children_entities_and_unlinks_the_orphans() {
+          Flux.just(manhattan, albuquerque, springfield)
+            .map(Town::of)
+            .collectList()
+            .map(usa::withTowns)
+            .flatMap(countryRepo::save)
+            .map(saved ->
+              saved.withTownsBy(towns ->
+                towns.stream()
+                  .filter(not(town -> town.name().equals(albuquerque)))
+                  .toList()
+              )
+            )
+            .flatMap(countryRepo::save)
+            .zipWhen(x -> townRepo.findAll().collectList())
+            .as(TxStepVerifier::withRollback)
+            .assertNext(consumer((country, found) -> {
+              assertThat(found)
+                .extracting(Town::name, Town::countryId)
+                .containsExactly(
+                  tuple(manhattan, country.id()),
+                  tuple(albuquerque, null),
+                  tuple(springfield, country.id())
+                );
+            }))
+            .verifyComplete();
+        }
       }
     }
 
     @Nested class when_all_the_children_are_left_orphan {
-      @Test void deletes_all_the_orphan_children() {
-        Flux.just(newYork, boston, chicago)
-          .map(City::of)
-          .collectList()
-          .map(usa::withCities)
-          .flatMap(countryRepo::save)
-          .map(saved -> saved.withCities(List.of()))
-          .flatMap(countryRepo::save)
-          .map(Country::id)
-          .flatMapMany(cityRepo::findByCountryId)
-          .collectList()
-          .as(TxStepVerifier::withRollback)
-          .assertNext(found -> {
-            assertThat(found).isEmpty();
-          })
-          .verifyComplete();
+      @Nested class and_the_keepOrphans_option_is_false {
+        @Test void deletes_all_the_orphan_children() {
+          Flux.just(newYork, boston, chicago)
+            .map(City::of)
+            .collectList()
+            .map(usa::withCities)
+            .flatMap(countryRepo::save)
+            .map(saved -> saved.withCities(List.of()))
+            .flatMap(countryRepo::save)
+            .map(Country::id)
+            .flatMapMany(cityRepo::findByCountryId)
+            .collectList()
+            .as(TxStepVerifier::withRollback)
+            .assertNext(found -> {
+              assertThat(found).isEmpty();
+            })
+            .verifyComplete();
+        }
+      }
+
+      @Nested class and_the_keepOrphans_option_is_true {
+        @Test void unlinks_all_the_orphan_children() {
+          Flux.just(manhattan, albuquerque, springfield)
+            .map(Town::of)
+            .collectList()
+            .map(usa::withTowns)
+            .flatMap(countryRepo::save)
+            .map(saved -> saved.withTowns(List.of()))
+            .flatMap(countryRepo::save)
+            .then(townRepo.findAll().collectList())
+            .as(TxStepVerifier::withRollback)
+            .assertNext(found -> {
+              assertThat(found)
+                .allSatisfy(town -> assertThat(town.countryId()).isNull())
+                .extracting(Town::name)
+                .containsExactly(manhattan, albuquerque, springfield);
+            })
+            .verifyComplete();
+        }
       }
     }
 

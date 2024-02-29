@@ -9,14 +9,18 @@ import org.springframework.data.annotation.Id;
 
 import io.github.joselion.springr2dbcrelationships.annotations.ManyToMany;
 import io.github.joselion.springr2dbcrelationships.models.book.Book;
+import io.github.joselion.springr2dbcrelationships.models.paper.Paper;
 import lombok.With;
+import lombok.experimental.WithBy;
 
 @With
+@WithBy
 public record Author(
   @Id @Nullable UUID id,
   LocalDateTime createdAt,
   String name,
-  @ManyToMany List<Book> books
+  @ManyToMany List<Book> books,
+  @ManyToMany(deleteOrphans = true) @Nullable List<Paper> papers
 ) {
 
   public static Author empty() {
@@ -24,7 +28,8 @@ public record Author(
       null,
       LocalDateTime.now(),
       "",
-      List.of()
+      List.of(),
+      null
     );
   }
 

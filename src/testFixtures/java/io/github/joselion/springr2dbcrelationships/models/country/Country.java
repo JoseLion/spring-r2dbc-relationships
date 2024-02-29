@@ -11,14 +11,16 @@ import io.github.joselion.springr2dbcrelationships.annotations.OneToMany;
 import io.github.joselion.springr2dbcrelationships.models.city.City;
 import io.github.joselion.springr2dbcrelationships.models.town.Town;
 import lombok.With;
+import lombok.experimental.WithBy;
 
 @With
+@WithBy
 public record Country(
   @Id @Nullable UUID id,
   LocalDateTime createdAt,
   String name,
   @OneToMany List<City> cities,
-  @OneToMany List<Town> towns
+  @OneToMany(keepOrphans = true) List<Town> towns
 ) {
 
   public static Country empty() {

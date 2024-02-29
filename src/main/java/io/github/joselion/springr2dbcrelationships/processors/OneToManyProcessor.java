@@ -12,6 +12,7 @@ import java.util.stream.Stream;
 import org.springframework.context.ApplicationContext;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.r2dbc.core.R2dbcEntityTemplate;
+import org.springframework.data.relational.core.query.Update;
 import org.springframework.data.relational.core.sql.SqlIdentifier;
 
 import io.github.joselion.maybe.Maybe;
@@ -107,14 +108,21 @@ public record OneToManyProcessor(
           .flatMap(this::save)
           .collectList()
           .delayUntil(children -> {
+            final var keepOrphans = annotation.keepOrphans();
             final var innerId = this.idColumnOf(innerType);
-            final var ids = children.stream()
-              .map(this::idValueOf)
-              .toList();
+            final var ids = children.stream().map(this::idValueOf).toList();
+            final var allOrphans = query(where(mappedBy).is(entityId).and(innerId).notIn(ids));
+
+            if (keepOrphans) {
+              return this.template
+                .update(innerType)
+                .matching(allOrphans)
+                .apply(Update.update(mappedBy, null));
+            }
 
             return this.template
               .delete(innerType)
-              .matching(query(where(mappedBy).is(entityId).and(innerId).notIn(ids)))
+              .matching(allOrphans)
               .all();
           });
       });

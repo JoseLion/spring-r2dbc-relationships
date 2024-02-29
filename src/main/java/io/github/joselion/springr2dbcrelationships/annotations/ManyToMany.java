@@ -57,6 +57,25 @@ public @interface ManyToMany {
   String linkedBy() default "";
 
   /**
+   * Whether "orphan" entities should be deleted or not. Defaults to {@code false}.
+   * 
+   * <p>Usually, many-to-many relationships are not mutually exclusive to each
+   * other, meaning that one can exist without the other even when they are not
+   * linked in their join table. In this context, "orphans" refers to all
+   * entities no longer linked to the current entity. By default, the
+   * annotation will only delete the links to the "orphans" entities in the
+   * join table. Setting this option to {@code true} will also delete the
+   * "orphan" entities.
+   *
+   * @return {@code true} if "orphan" entities should also be deleted, {@code false}
+   *         otherwise
+   * @apiNote given the nature of many-to-many relationships, setting this
+   *          option to {@code true} is highly discouraged as it can produce
+   *          unexpected results, especially in bidirectional associations
+   */
+  boolean deleteOrphans() default false;
+
+  /**
    * Used to specify the name of the "foreign key" column that maps the
    * annotated field's entity with the join table. This is usually optional if
    * the column's name matches the entity's table name followed by an {@code _id}
@@ -71,10 +90,11 @@ public @interface ManyToMany {
   String mappedBy() default "";
 
   /**
-   * Should the entities on the annotated field be readonly. I.e., the entities
-   * are never persisted. Defaults to {@code false}.
+   * Whether the entities on the annotated field are readonly or not. I.e., the
+   * "children" entities are never persisted. Defaults to {@code false}.
    *
-   * @return whether the annotated entity is readonly or not
+   * @return {@code true} if the children entities should be readonly, {@code false}
+   *         otherwise
    */
   boolean readonly() default false;
 

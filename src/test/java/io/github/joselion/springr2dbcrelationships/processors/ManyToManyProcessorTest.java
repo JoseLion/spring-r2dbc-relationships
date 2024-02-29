@@ -1,5 +1,6 @@
 package io.github.joselion.springr2dbcrelationships.processors;
 
+import static java.util.function.Predicate.not;
 import static org.assertj.core.api.Assertions.assertThat;
 import static reactor.function.TupleUtils.consumer;
 import static reactor.function.TupleUtils.function;
@@ -17,6 +18,8 @@ import io.github.joselion.springr2dbcrelationships.models.authorbook.AuthorBook;
 import io.github.joselion.springr2dbcrelationships.models.authorbook.AuthorBookRepository;
 import io.github.joselion.springr2dbcrelationships.models.book.Book;
 import io.github.joselion.springr2dbcrelationships.models.book.BookRepository;
+import io.github.joselion.springr2dbcrelationships.models.paper.Paper;
+import io.github.joselion.springr2dbcrelationships.models.paper.PaperRepository;
 import io.github.joselion.testing.annotations.IntegrationTest;
 import io.github.joselion.testing.transactional.TxStepVerifier;
 import reactor.core.publisher.Flux;
@@ -35,6 +38,9 @@ import reactor.util.function.Tuples;
   @Autowired
   private AuthorBookRepository authorBookRepo;
 
+  @Autowired
+  private PaperRepository paperRepo;
+
   private final Author tolkien = Author.of("J. R. R. Tolkien");
 
   private final String fellowship = "The Fellowship of the Ring";
@@ -42,6 +48,14 @@ import reactor.util.function.Tuples;
   private final String twoTowers = "The Two Towers";
 
   private final String kingsReturn = "The Return of the King";
+
+  private Author nielDegreese = Author.of("Niel Degreese Tyson");
+
+  private String blackHoles = "Super Masive Black holes";
+
+  private String superNovas = "Effects of Super Novas";
+
+  private String wormHoles = "Theoretical Worm Holes";
 
   @Nested class populate {
     @Test void populates_the_field_with_the_joined_entities() throws InterruptedException {
@@ -153,8 +167,6 @@ import reactor.util.function.Tuples;
             )
             .as(TxStepVerifier::withRollback)
             .assertNext(consumer((author, books) -> {
-              // System.err.println("******************* " + author);
-              // System.err.println("=================== " + books);
               assertThat(author.books())
                 .allSatisfy(book -> assertThat(book.id()).isNotNull())
                 .extracting(Book::title)
@@ -183,69 +195,126 @@ import reactor.util.function.Tuples;
     }
 
     @Nested class when_there_are_orphan_items {
-      @Test void persists_the_items_and_delete_the_orphan_join_links() {
-        tolkienTrilogy()
-          .flatMap(function((books, author) ->
-            Flux.fromIterable(books)
-              .filter(book -> book.title().length() > 15)
-              .collectList()
-              .map(author::withBooks)
-          ))
-          .flatMap(authorRepo::save)
-          .zipWhen(author ->
-            Mono.just(author)
-              .map(Author::id)
-              .flatMapMany(authorBookRepo::findByAuthorId)
-              .collectList()
-          )
-          .zipWhen(
-            x -> bookRepo.findAll().collectList(),
-            (t, books) -> Tuples.of(t.getT1(), t.getT2(), books))
-          .as(TxStepVerifier::withRollback)
-          .assertNext(consumer((author, joins, books) -> {
-            assertThat(author.books())
-              .allSatisfy(book -> assertThat(book.id()).isNotNull())
-              .extracting(Book::title)
-              .contains(fellowship, kingsReturn);
-            assertThat(joins)
-              .hasSameSizeAs(author.books())
-              .allSatisfy(join -> assertThat(join.authorId()).isEqualTo(author.id()))
-              .extracting(AuthorBook::bookId)
-              .containsAll(author.books().stream().map(Book::id).toList());
-            assertThat(books)
-              .allSatisfy(book -> assertThat(book.id()).isNotNull())
-              .extracting(Book::title)
-              .containsExactly(fellowship, twoTowers, kingsReturn);
-          }))
-          .verifyComplete();
+      @Nested class and_the_deleteOrphans_option_is_false {
+        @Test void persists_the_items_and_delete_the_orphan_join_links() {
+          tolkienTrilogy()
+            .flatMap(function((books, author) ->
+              Flux.fromIterable(books)
+                .filter(book -> book.title().length() > 15)
+                .collectList()
+                .map(author::withBooks)
+            ))
+            .flatMap(authorRepo::save)
+            .zipWhen(author ->
+              Mono.just(author)
+                .map(Author::id)
+                .flatMapMany(authorBookRepo::findByAuthorId)
+                .collectList()
+            )
+            .zipWhen(
+              x -> bookRepo.findAll().collectList(),
+              (t, books) -> Tuples.of(t.getT1(), t.getT2(), books))
+            .as(TxStepVerifier::withRollback)
+            .assertNext(consumer((author, joins, books) -> {
+              assertThat(author.books())
+                .allSatisfy(book -> assertThat(book.id()).isNotNull())
+                .extracting(Book::title)
+                .contains(fellowship, kingsReturn);
+              assertThat(joins)
+                .hasSameSizeAs(author.books())
+                .allSatisfy(join -> assertThat(join.authorId()).isEqualTo(author.id()))
+                .extracting(AuthorBook::bookId)
+                .containsAll(author.books().stream().map(Book::id).toList());
+              assertThat(books)
+                .allSatisfy(book -> assertThat(book.id()).isNotNull())
+                .extracting(Book::title)
+                .containsExactly(fellowship, twoTowers, kingsReturn);
+            }))
+            .verifyComplete();
+        }
+      }
+
+      @Nested class and_the_deleteOrphans_option_is_true {
+        @Test void persists_the_items_deletes_the_orphan_join_links_and_delete_the_orphan_items() {
+          Flux.just(blackHoles, superNovas, wormHoles)
+            .map(Paper::of)
+            .delayElements(Duration.ofMillis(1))
+            .collectList()
+            .map(nielDegreese::withPapers)
+            .flatMap(authorRepo::save)
+            .map(saved ->
+              saved.withPapersBy(papers ->
+                papers.stream()
+                  .filter(not(paper -> paper.title().equals(superNovas)))
+                  .toList()
+              )
+            )
+            .flatMap(authorRepo::save)
+            .map(Author::id)
+            .flatMap(authorRepo::findById)
+            .zipWhen(x -> paperRepo.findAll().collectList())
+            .as(TxStepVerifier::withRollback)
+            .assertNext(consumer((author, papers) -> {
+              assertThat(author.papers())
+                .extracting(Paper::title)
+                .containsExactly(wormHoles, blackHoles);
+              assertThat(papers)
+                .extracting(Paper::title)
+                .containsExactly(blackHoles, wormHoles);
+            }))
+            .verifyComplete();
+        }
       }
     }
 
     @Nested class when_all_the_items_are_left_orphan {
-      @Test void deletes_all_the_orphan_join_links() {
-        tolkienTrilogy()
-          .map(function((books, author) -> author.withBooks(List.of())))
-          .flatMap(authorRepo::save)
-          .zipWhen(author ->
-            Mono.just(author)
-              .map(Author::id)
-              .flatMapMany(authorBookRepo::findByAuthorId)
-              .collectList()
-          )
-          .zipWhen(
-            x -> bookRepo.findAll().collectList(),
-            (t, books) -> Tuples.of(t.getT1(), t.getT2(), books)
-          )
-          .as(TxStepVerifier::withRollback)
-          .assertNext(consumer((author, joins, books) -> {
-            assertThat(author.books()).isEmpty();
-            assertThat(joins).isEmpty();
-            assertThat(books)
-              .allSatisfy(book -> assertThat(book.id()).isNotNull())
-              .extracting(Book::title)
-              .containsExactly(fellowship, twoTowers, kingsReturn);
-          }))
-          .verifyComplete();
+      @Nested class and_the_deleteOrphans_option_is_false {
+        @Test void deletes_all_the_orphan_join_links() {
+          tolkienTrilogy()
+            .map(function((books, author) -> author.withBooks(List.of())))
+            .flatMap(authorRepo::save)
+            .zipWhen(author ->
+              Mono.just(author)
+                .map(Author::id)
+                .flatMapMany(authorBookRepo::findByAuthorId)
+                .collectList()
+            )
+            .zipWhen(
+              x -> bookRepo.findAll().collectList(),
+              (t, books) -> Tuples.of(t.getT1(), t.getT2(), books)
+            )
+            .as(TxStepVerifier::withRollback)
+            .assertNext(consumer((author, joins, books) -> {
+              assertThat(author.books()).isEmpty();
+              assertThat(joins).isEmpty();
+              assertThat(books)
+                .allSatisfy(book -> assertThat(book.id()).isNotNull())
+                .extracting(Book::title)
+                .containsExactly(fellowship, twoTowers, kingsReturn);
+            }))
+            .verifyComplete();
+        }
+      }
+
+      @Nested class and_the_deleteOrphans_option_is_true {
+        @Test void deletes_all_the_orphan_join_links_and_all_the_orphan_items() {
+          Flux.just(blackHoles, superNovas, wormHoles)
+            .map(Paper::of)
+            .collectList()
+            .map(nielDegreese::withPapers)
+            .flatMap(authorRepo::save)
+            .map(saved -> saved.withPapers(List.of()))
+            .flatMap(authorRepo::save)
+            .map(Author::id)
+            .flatMap(authorRepo::findById)
+            .zipWhen(x -> paperRepo.findAll().collectList())
+            .as(TxStepVerifier::withRollback)
+            .assertNext(consumer((author, papers) -> {
+              assertThat(author.papers()).isEmpty();
+              assertThat(papers).isEmpty();
+            }))
+            .verifyComplete();
+        }
       }
     }
 
@@ -280,7 +349,6 @@ import reactor.util.function.Tuples;
 
   private Mono<Tuple2<List<Book>, Author>> tolkienTrilogy() {
     return Flux.just(fellowship, twoTowers, kingsReturn)
-      .delayElements(Duration.ofMillis(10))
       .map(Book::of)
       .publish(bookRepo::saveAll)
       .collectList()

@@ -141,6 +141,7 @@ public record ManyToManyProcessor(
         final var innerType = this.domainFor(Reflect.innerTypeOf(field));
         final var entityTable = this.tableNameOf(entityType);
         final var innerTable = this.tableNameOf(innerType);
+        final var innerId = this.idColumnOf(innerType);
         final var mappedBy = Optional.of(annotation)
           .map(ManyToMany::mappedBy)
           .filter(not(String::isBlank))
@@ -149,6 +150,24 @@ public record ManyToManyProcessor(
           .map(ManyToMany::linkedBy)
           .filter(not(String::isBlank))
           .orElseGet(() -> innerTable.concat("_id"));
+        final var orphansStatement = """
+          DELETE FROM %s
+          WHERE %s NOT IN (
+            SELECT j.%s FROM %s AS j
+            WHERE j.%s = $1
+          )
+          """
+          .formatted(innerTable, innerId, linkedBy, joinTable, mappedBy);
+        final var deleteOrphans = Mono.just(annotation)
+          .filter(ManyToMany::deleteOrphans)
+          .flatMap(y ->
+            this.template
+              .getDatabaseClient()
+              .sql(orphansStatement)
+              .bind(0, entityId)
+              .fetch()
+              .rowsUpdated()
+          );
 
         if (values.isEmpty()) {
           return this.template
@@ -157,6 +176,7 @@ public record ManyToManyProcessor(
             .bind(0, entityId)
             .fetch()
             .rowsUpdated()
+            .delayUntil(x -> deleteOrphans)
             .map(x -> List.of());
         }
 
@@ -210,12 +230,11 @@ public record ManyToManyProcessor(
             final var paramsTemplate = IntStream.range(2, items.size() + 2)
               .mapToObj(i -> "$" + i)
               .collect(joining(", "));
-            final var statement = "DELETE FROM %s WHERE %s = $1 AND %s NOT IN (%s)".formatted(
-              joinTable,
-              mappedBy,
-              linkedBy,
-              paramsTemplate
-            );
+            final var statement = """
+              DELETE FROM %s
+              WHERE %s = $1 AND %s NOT IN (%s)
+              """
+              .formatted(joinTable, mappedBy, linkedBy, paramsTemplate);
             final var params = IntStream.range(2, items.size() + 2)
               .mapToObj(i -> Map.entry("$" + i, this.idValueOf(items.get(i - 2))))
               .collect(toMap(Entry::getKey, Entry::getValue));
@@ -226,7 +245,8 @@ public record ManyToManyProcessor(
               .bind(0, entityId)
               .bindValues(params)
               .fetch()
-              .rowsUpdated();
+              .rowsUpdated()
+              .delayUntil(x -> deleteOrphans);
           });
       }));
   }
