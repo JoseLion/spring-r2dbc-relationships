@@ -1,7 +1,5 @@
 package io.github.joselion.springr2dbcrelationships.models.town;
 
-import static io.github.joselion.springr2dbcrelationships.helpers.Constants.UUID_ZERO;
-
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -16,8 +14,8 @@ import lombok.With;
 public record Town(
   @Id @Nullable UUID id,
   LocalDateTime createdAt,
-  UUID countryId,
-  @ManyToOne(persist = true) Country country,
+  @Nullable UUID countryId,
+  @ManyToOne(persist = true) @Nullable Country country,
   String name
 ) {
 
@@ -25,8 +23,8 @@ public record Town(
     return new Town(
       null,
       LocalDateTime.now(),
-      UUID_ZERO,
-      Country.empty(),
+      null,
+      null,
       ""
     );
   }

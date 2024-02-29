@@ -80,6 +80,7 @@ sonarLint {
       'java:S107', // Allow constructors with more than 7 parameters
       'java:S3776', // Allow methods with more than 15 lines
       'java:S4032', // Allow packages only containing `package-info.java`
+      'java:S6203', // Allow textbloks in lambda expressions
     )
   }
 }

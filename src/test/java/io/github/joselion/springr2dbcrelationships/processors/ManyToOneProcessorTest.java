@@ -3,8 +3,6 @@ package io.github.joselion.springr2dbcrelationships.processors;
 import static org.assertj.core.api.Assertions.assertThat;
 import static reactor.function.TupleUtils.consumer;
 
-import java.time.Duration;
-
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -45,7 +43,6 @@ import reactor.core.publisher.Mono;
         .map(Country::id)
         .zipWhen(id ->
           Flux.just(newYork, boston, chicago)
-            .delayElements(Duration.ofMillis(10))
             .map(City::of)
             .map(city -> city.withCountryId(id))
             .publish(cityRepo::saveAll)
