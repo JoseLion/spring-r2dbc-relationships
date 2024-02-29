@@ -350,6 +350,7 @@ import reactor.util.function.Tuples;
   private Mono<Tuple2<List<Book>, Author>> tolkienTrilogy() {
     return Flux.just(fellowship, twoTowers, kingsReturn)
       .map(Book::of)
+      .delayElements(Duration.ofMillis(1))
       .publish(bookRepo::saveAll)
       .collectList()
       .zipWith(authorRepo.save(tolkien))
