@@ -1,7 +1,6 @@
 package io.github.joselion.springr2dbcrelationships.processors;
 
 import static java.util.Arrays.stream;
-import static java.util.function.Predicate.isEqual;
 import static java.util.function.Predicate.not;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toMap;
@@ -122,7 +121,7 @@ public record ManyToManyProcessor(
 
   @Override
   public Mono<List<?>> persist(final ManyToMany annotation, final Field field) {
-    final var values = Reflect.<List<?>>getter(this.entity, field);
+    final var values = Reflect.<List<Object>>getter(this.entity, field);
 
     if (values == null) {
       return Mono.empty();
@@ -180,51 +179,49 @@ public record ManyToManyProcessor(
             .map(x -> List.of());
         }
 
-        return Flux.fromIterable(values)
-          .map(value ->
-            stream(value.getClass().getDeclaredFields())
-              .filter(vf -> vf.isAnnotationPresent(ManyToMany.class))
-              .filter(vf -> this.domainFor(Reflect.innerTypeOf(vf)).equals(entityType))
-              .reduce(
-                value,
-                (acc, vf) -> Reflect.update(acc, vf, null),
-                (a, b) -> b
-              )
-          )
-          .flatMap(this::save)
-          .collectList()
-          .delayUntil(items -> {
-            final var newIds = values.stream()
-              .filter(this::isNew)
-              .map(this::idValueOf)
-              .toList();
-
-            return Flux.fromIterable(items)
-              .filter(item -> newIds.stream().anyMatch(not(isEqual(this.idValueOf(item)))))
+        return Mono.just(annotation)
+          .filter(not(ManyToMany::linkOnly))
+          .flatMap(x ->
+            Flux.fromIterable(values)
+              .map(this::toPreventingCycles)
+              .flatMap(this::save)
               .collectList()
-              .filter(not(List::isEmpty))
-              .flatMap(newItems -> {
-                final var paramsTemplate = IntStream.range(2, newItems.size() + 2)
-                  .mapToObj("($1, $%d)"::formatted)
-                  .collect(joining(", "));
-                final var statement = "INSERT INTO %s (%s, %s) VALUES %s".formatted(
-                  joinTable,
-                  mappedBy,
-                  linkedBy,
-                  paramsTemplate
-                );
-                final var params = IntStream.range(2, newItems.size() + 2)
-                  .mapToObj(i -> Map.entry("$" + i, this.idValueOf(newItems.get(i - 2))))
-                  .collect(toMap(Entry::getKey, Entry::getValue));
+          )
+          .defaultIfEmpty(values)
+          .delayUntil(items ->
+            items.stream()
+              .filter(item -> this.idValueOf(item) == null)
+              .findFirst()
+              .map(Object::toString)
+              .map("Link-only entity is missing its primary key: "::concat)
+              .map(RelationshipException::of)
+              .map(Mono::error)
+              .orElseGet(Mono::empty)
+          )
+          .delayUntil(newItems -> {
+            final var paramsTemplate = IntStream.range(0, newItems.size())
+              .mapToObj("(:entityId, :link[%d])"::formatted)
+              .collect(joining(", "));
+            final var params = IntStream.range(0, newItems.size())
+              .mapToObj(i -> Map.entry("link[%d]".formatted(i), this.idValueOf(newItems.get(i))))
+              .collect(toMap(Entry::getKey, Entry::getValue));
+            final var statement = MessageFormat.format(
+              """
+              INSERT INTO {0} ({1}, {2}) (
+                SELECT t.* FROM (VALUES {3}) AS t(mapped, linked)
+                WHERE t.linked NOT IN (SELECT {2} FROM {0} WHERE {1} = :entityId)
+              )
+              """,
+              joinTable, mappedBy, linkedBy, paramsTemplate
+            );
 
-                return this.template
-                  .getDatabaseClient()
-                  .sql(statement)
-                  .bind(0, entityId)
-                  .bindValues(params)
-                  .fetch()
-                  .rowsUpdated();
-              });
+            return this.template
+              .getDatabaseClient()
+              .sql(statement)
+              .bind("entityId", entityId)
+              .bindValues(params)
+              .fetch()
+              .rowsUpdated();
           })
           .delayUntil(items -> {
             final var paramsTemplate = IntStream.range(2, items.size() + 2)
@@ -292,5 +289,19 @@ public record ManyToManyProcessor(
         .callback(AfterConvertCallback.class, value, tableId)
         .defaultIfEmpty(value);
     };
+  }
+
+  private <T> T toPreventingCycles(final T value) {
+    final var entityType = this.domainFor(this.entity.getClass());
+    final var valueFields = value.getClass().getDeclaredFields();
+
+    return stream(valueFields)
+      .filter(field -> field.isAnnotationPresent(ManyToMany.class))
+      .filter(field -> this.domainFor(Reflect.innerTypeOf(field)).equals(entityType))
+      .reduce(
+        value,
+        (acc, field) -> Reflect.update(acc, field, null),
+        (a, b) -> b
+      );
   }
 }

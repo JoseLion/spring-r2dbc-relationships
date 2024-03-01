@@ -10,8 +10,10 @@ import org.springframework.data.annotation.Id;
 import io.github.joselion.springr2dbcrelationships.annotations.ManyToMany;
 import io.github.joselion.springr2dbcrelationships.models.author.Author;
 import lombok.With;
+import lombok.experimental.WithBy;
 
 @With
+@WithBy
 public record Paper(
   @Id @Nullable UUID id,
   LocalDateTime createdAt,

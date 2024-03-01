@@ -47,12 +47,16 @@ public @interface ManyToOne {
   String foreignKey() default "";
 
   /**
-   * Should the entity on the annotated field be persisted. Defaults to {@code false}.
+   * Whether the associated entity persists or not. Defaults to {@code false}.
    *
-   * <p>Many-to-one relationships are a back reference of a one-to-many
-   * relationship, so they are usually expected to be readonly.
+   * <p>Many-to-one relationships are a backreference of a one-to-many
+   * relationship. They are usually expected to be link-only, meaning the
+   * parent should exist to link the entity through their {@link #foreignKey},
+   * and no changes are made to the parent entity. Setting this option to
+   * {@code true} creates/updates the parent before linking the entity.
    *
-   * @return whether the annotated entity is persisted or not
+   * @return {@code true} if the associated entity persists, {@code false}
+   *         otherwise
    */
   boolean persist() default false;
 }

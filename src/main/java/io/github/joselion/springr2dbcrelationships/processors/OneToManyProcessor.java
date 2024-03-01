@@ -104,8 +104,33 @@ public record OneToManyProcessor(
           .orThrow(RelationshipException::of);
 
         return Flux.fromIterable(values)
-          .map(Reflect.update(mappedField, entityId))
-          .flatMap(this::save)
+          .flatMap(value -> {
+            if (annotation.linkOnly()) {
+              final var innerTable = this.tableNameOf(innerType);
+              final var innerId = this.idColumnOf(innerType);
+              final var statement = "UPDATE %s SET %s = $1 WHERE %s = $2".formatted(innerTable, mappedBy, innerId);
+              final var linked = Reflect.update(value, mappedField, entityId);
+              final var missingId = RelationshipException.of("Link-only entity is missing its primary key: " + linked);
+
+              return Mono.just(value)
+                .mapNotNull(this::idValueOf)
+                .flatMap(valueId ->
+                  this.template
+                    .getDatabaseClient()
+                    .sql(statement)
+                    .bind(0, entityId)
+                    .bind(1, valueId)
+                    .fetch()
+                    .rowsUpdated()
+                )
+                .map(x -> linked)
+                .switchIfEmpty(Mono.error(missingId));
+            }
+
+            return Mono.just(value)
+              .map(Reflect.update(mappedField, entityId))
+              .flatMap(this::save);
+          })
           .collectList()
           .delayUntil(children -> {
             final var keepOrphans = annotation.keepOrphans();

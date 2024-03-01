@@ -62,10 +62,11 @@ public @interface OneToOne {
   String mappedBy() default "";
 
   /**
-   * Should the entity on the annotated field be readonly. I.e., the entity is
-   * never persisted. Defaults to {@code false}.
+   * Whether the associated entity is read-only or not, meaning it's never
+   * persisted or linked. Defaults to {@code false}.
    *
-   * @return whether the annotated entity is readonly or not
+   * @return {@code true} if the associated entity is read-only, {@code false}
+   *         otherwise
    */
   boolean readonly() default false;
 }

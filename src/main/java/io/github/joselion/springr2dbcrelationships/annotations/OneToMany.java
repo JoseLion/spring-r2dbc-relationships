@@ -44,6 +44,19 @@ public @interface OneToMany {
   boolean keepOrphans() default false;
 
   /**
+   * Whether children entities are only linked to the parent or not. Defaults to
+   * {@code false}.
+   *
+   * <p>Link-only means the children entities should already exist. The
+   * annotation will only update the "foreign key" link on each entity when
+   * required. Other values in the children entities are never updated.
+   *
+   * @return {@code true} if children entities are only linked, {@code false}
+   *         otherwise
+   */
+  boolean linkOnly() default false;
+
+  /**
    * Used to specify the name of the "foreign key" column on the child table.
    * This is usually optional if the name of the column matches the name of the
    * parent table followed by an {@code _id} suffix.
