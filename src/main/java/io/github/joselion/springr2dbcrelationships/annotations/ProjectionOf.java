@@ -10,12 +10,12 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
 
 /**
- * Marks a class or record to be a projection of another entity. This features
- * usually works out-of-the-box on Spring Boot, but this annotation is required
- * to work with the relational annotations provided by this package.
+ * Marks a type as a projection of an entity. This feature works out of the box
+ * on Spring Boot, but the annotation is needed for relationship processors to
+ * obtain the accurate entity information hidden in the projection.
  *
- * @see <a href="https://docs.spring.io/spring-data/r2dbc/docs/1.4.6/reference/html/#projections">
- *        Projections - Spring R2DBC Reference
+ * @see <a href="https://docs.spring.io/spring-data/relational/reference/repositories/projections.html">
+ *        Spring Data Relational | Projections
  *      </a>
  */
 @Inherited
@@ -25,9 +25,9 @@ import java.lang.annotation.Target;
 public @interface ProjectionOf {
 
   /**
-   * The class of the entity to be projected.
+   * The the entity type of the projection.
    *
-   * @return the type of the projection
+   * @return the entity type
    */
   Class<?> value();
 }

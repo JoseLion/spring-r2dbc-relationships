@@ -31,14 +31,14 @@ import reactor.core.scheduler.Schedulers;
 import reactor.util.function.Tuples;
 
 /**
- * Spring component which registers callbacks for all entities to process
- * relationship annotations.
+ * Implementation of all the callback that process the R2DBC Relationship
+ * annotations.
  *
  * @param <T> the entity type
  * @param template the r2dbc entity template
  * @param context the Spring application context
  */
-public record RelationshipsCallbacks<T>(
+public record R2dbcRelationshipsCallbacks<T>(
   R2dbcEntityTemplate template,
   ApplicationContext context
 ) implements AfterConvertCallback<T>, AfterSaveCallback<T>, BeforeConvertCallback<T> {
