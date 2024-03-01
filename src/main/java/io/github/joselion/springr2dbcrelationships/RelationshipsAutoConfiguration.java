@@ -33,7 +33,7 @@ public class RelationshipsAutoConfiguration {
   @Bean
   public <T> RelationshipsCallbacks<T> relationshipsCallbacks(
     final @Lazy R2dbcEntityTemplate template,
-    final @Lazy ApplicationContext context
+    final ApplicationContext context
   ) {
     return new RelationshipsCallbacks<>(template, context);
   }

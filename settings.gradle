@@ -21,7 +21,7 @@ dependencyResolutionManagement {
 
       library('assertj-core', 'org.assertj', 'assertj-core').version('3.25.3')
       library('lombok', 'org.projectlombok', 'lombok').version('1.18.30')
-      library('maybe', 'io.github.joselion', 'maybe').version('4.2.1')
+      library('maybe', 'io.github.joselion', 'maybe').version('[4.2.1,)')
       library('mockito-core', 'org.mockito', 'mockito-core').version('5.10.0')
       library('sonarlint-java', 'org.sonarsource.java', 'sonar-java-plugin').version('7.31.0.34839')
 
