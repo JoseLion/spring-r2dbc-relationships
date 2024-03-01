@@ -29,6 +29,25 @@ import org.springframework.data.domain.Sort.Direction;
 public @interface ManyToMany {
 
   /**
+   * Whether "orphan" entities should be deleted or not. Defaults to {@code false}.
+   * 
+   * <p>Usually, many-to-many relationships are not mutually exclusive to each
+   * other, meaning that one can exist without the other even when they are not
+   * linked in their join table. In this context, "orphans" refers to all
+   * entities no longer linked to the current entity. By default, the
+   * annotation will only delete the links to the "orphans" entities in the
+   * join table. Setting this option to {@code true} will also delete the
+   * "orphan" entities.
+   *
+   * @return {@code true} if "orphan" entities should also be deleted, {@code false}
+   *         otherwise
+   * @apiNote given the nature of many-to-many relationships, setting this
+   *          option to {@code true} is highly discouraged as it can produce
+   *          unexpected results, especially in bidirectional associations
+   */
+  boolean deleteOrphans() default false;
+
+  /**
    * Used to specify the name of the join table responsible for the
    * many-to-many relationship between two tables. This is usually optional if
    * the name of the join table matches the names of both related tables joined
@@ -57,23 +76,17 @@ public @interface ManyToMany {
   String linkedBy() default "";
 
   /**
-   * Whether "orphan" entities should be deleted or not. Defaults to {@code false}.
-   * 
-   * <p>Usually, many-to-many relationships are not mutually exclusive to each
-   * other, meaning that one can exist without the other even when they are not
-   * linked in their join table. In this context, "orphans" refers to all
-   * entities no longer linked to the current entity. By default, the
-   * annotation will only delete the links to the "orphans" entities in the
-   * join table. Setting this option to {@code true} will also delete the
-   * "orphan" entities.
+   * Whether the associated entities are only linked to the join table or not.
+   * Defaults to {@code false}.
    *
-   * @return {@code true} if "orphan" entities should also be deleted, {@code false}
+   * <p>Link-only means the associated entities already exist. The annotation
+   * will only create the link in the join table column when required. The
+   * associated entities are never updated.
+   *
+   * @return {@code true} if the associated entities are link-only, {@code false}
    *         otherwise
-   * @apiNote given the nature of many-to-many relationships, setting this
-   *          option to {@code true} is highly discouraged as it can produce
-   *          unexpected results, especially in bidirectional associations
    */
-  boolean deleteOrphans() default false;
+  boolean linkOnly() default false;
 
   /**
    * Used to specify the name of the "foreign key" column that maps the
@@ -90,10 +103,10 @@ public @interface ManyToMany {
   String mappedBy() default "";
 
   /**
-   * Whether the entities on the annotated field are readonly or not. I.e., the
-   * "children" entities are never persisted. Defaults to {@code false}.
+   * Whether the associated entities are read-only or not, meaning they are
+   * never persisted or linked. Defaults to {@code false}.
    *
-   * @return {@code true} if the children entities should be readonly, {@code false}
+   * @return {@code true} if the associated entities are read-only, {@code false}
    *         otherwise
    */
   boolean readonly() default false;

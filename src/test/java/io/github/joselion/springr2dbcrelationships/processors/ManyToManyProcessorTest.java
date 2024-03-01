@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import io.github.joselion.springr2dbcrelationships.exceptions.RelationshipException;
 import io.github.joselion.springr2dbcrelationships.models.author.Author;
 import io.github.joselion.springr2dbcrelationships.models.author.AuthorRepository;
 import io.github.joselion.springr2dbcrelationships.models.authorbook.AuthorBook;
@@ -343,6 +344,59 @@ import reactor.util.function.Tuples;
               .containsExactly(fellowship, twoTowers, kingsReturn);
           }))
           .verifyComplete();
+      }
+    }
+
+    @Nested class when_the_relation_is_link_only {
+      @Nested class and_all_the_entities_exist {
+        @Test void links_the_entitites_without_updating_them() {
+          Flux.just(blackHoles, superNovas, wormHoles)
+            .map(Paper::of)
+            .publish(paperRepo::saveAll)
+            .map(paper -> paper.withTitleBy(String::toUpperCase))
+            .collectList()
+            .map(nielDegreese.withPapers(null)::withStudies)
+            .flatMap(authorRepo::save)
+            .zipWhen(x -> paperRepo.findAll().collectList())
+            .as(TxStepVerifier::withRollback)
+            .assertNext(consumer((author, papers) -> {
+              assertThat(author.studies())
+                .extracting(Paper::title)
+                .containsExactly(
+                  blackHoles.toUpperCase(),
+                  superNovas.toUpperCase(),
+                  wormHoles.toUpperCase()
+                );
+              assertThat(papers)
+                .allSatisfy(paper ->
+                  assertThat(paper.authors())
+                    .isNotEmpty()
+                    .extracting(Author::id)
+                    .containsExactly(author.id())
+                )
+                .extracting(Paper::title)
+                .containsExactly(blackHoles, superNovas, wormHoles);
+            }))
+            .verifyComplete();
+        }
+      }
+
+      @Nested class and_an_enity_does_not_exist {
+        @Test void raises_a_RelationshipException_error() {
+          Flux.just(blackHoles, superNovas)
+            .map(Paper::of)
+            .publish(paperRepo::saveAll)
+            .concatWithValues(Paper.of(wormHoles))
+            .collectList()
+            .map(nielDegreese.withPapers(null)::withStudies)
+            .flatMap(authorRepo::save)
+            .as(TxStepVerifier::withRollback)
+            .verifyErrorSatisfies(error ->
+              assertThat(error)
+                .isInstanceOf(RelationshipException.class)
+                .hasMessageStartingWith("Link-only entity is missing its primary key: Paper[id=null,")
+            );
+        }
       }
     }
   }

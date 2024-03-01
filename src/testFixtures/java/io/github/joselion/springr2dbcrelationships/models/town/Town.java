@@ -9,8 +9,10 @@ import org.springframework.data.annotation.Id;
 import io.github.joselion.springr2dbcrelationships.annotations.ManyToOne;
 import io.github.joselion.springr2dbcrelationships.models.country.Country;
 import lombok.With;
+import lombok.experimental.WithBy;
 
 @With
+@WithBy
 public record Town(
   @Id @Nullable UUID id,
   LocalDateTime createdAt,

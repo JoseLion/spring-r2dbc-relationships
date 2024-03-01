@@ -20,7 +20,8 @@ public record Country(
   LocalDateTime createdAt,
   String name,
   @OneToMany List<City> cities,
-  @OneToMany(keepOrphans = true) List<Town> towns
+  @OneToMany(keepOrphans = true) List<Town> towns,
+  @OneToMany(linkOnly = true) @Nullable List<Town> settlements
 ) {
 
   public static Country empty() {
@@ -29,7 +30,8 @@ public record Country(
       LocalDateTime.now(),
       "",
       List.of(),
-      List.of()
+      List.of(),
+      null
     );
   }
 

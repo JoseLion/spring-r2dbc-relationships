@@ -20,7 +20,8 @@ public record Author(
   LocalDateTime createdAt,
   String name,
   @ManyToMany List<Book> books,
-  @ManyToMany(deleteOrphans = true) @Nullable List<Paper> papers
+  @ManyToMany(deleteOrphans = true) @Nullable List<Paper> papers,
+  @ManyToMany(linkOnly = true) @Nullable List<Paper> studies
 ) {
 
   public static Author empty() {
@@ -29,6 +30,7 @@ public record Author(
       LocalDateTime.now(),
       "",
       List.of(),
+      null,
       null
     );
   }

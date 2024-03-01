@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import io.github.joselion.springr2dbcrelationships.exceptions.RelationshipException;
 import io.github.joselion.springr2dbcrelationships.models.city.City;
 import io.github.joselion.springr2dbcrelationships.models.city.CityRepository;
 import io.github.joselion.springr2dbcrelationships.models.country.Country;
@@ -260,6 +261,56 @@ import reactor.core.publisher.Mono;
               .contains(chicago, boston, newYork);
           }))
           .verifyComplete();
+      }
+    }
+
+    @Nested class when_the_relation_is_link_only {
+      @Nested class and_all_children_entities_exist {
+        @Test void links_the_children_without_updating_anything_else() {
+          Flux.just(manhattan, albuquerque, springfield)
+            .map(Town::of)
+            .publish(townRepo::saveAll)
+            .map(town -> town.withNameBy(String::toUpperCase))
+            .collectList()
+            .map(usa.withTowns(null)::withSettlements)
+            .flatMap(countryRepo::save)
+            .zipWhen(country ->
+              Mono.just(country)
+                .map(Country::id)
+                .flatMapMany(townRepo::findByCountryId)
+                .collectList()
+            )
+            .as(TxStepVerifier::withRollback)
+            .assertNext(consumer((country, towns) -> {
+              assertThat(country.settlements())
+                .allSatisfy(town -> assertThat(town.countryId()).isEqualTo(country.id()))
+                .extracting(Town::name)
+                .containsExactly(manhattan.toUpperCase(), albuquerque.toUpperCase(), springfield.toUpperCase());
+              assertThat(towns)
+                .allSatisfy(town -> assertThat(town.countryId()).isEqualTo(country.id()))
+                .extracting(Town::name)
+                .containsExactly(manhattan, albuquerque, springfield);
+            }))
+            .verifyComplete();
+        }
+      }
+
+      @Nested class and_a_child_enity_does_not_exist {
+        @Test void raises_a_RelationshipException_error() {
+          Flux.just(manhattan, albuquerque)
+            .map(Town::of)
+            .publish(townRepo::saveAll)
+            .concatWithValues(Town.of(springfield))
+            .collectList()
+            .map(usa.withTowns(null)::withSettlements)
+            .flatMap(countryRepo::save)
+            .as(TxStepVerifier::withRollback)
+            .verifyErrorSatisfies(error -> {
+              assertThat(error)
+                .isInstanceOf(RelationshipException.class)
+                .hasMessageStartingWith("Link-only entity is missing its primary key: Town[id=null,");
+            });
+        }
       }
     }
   }
