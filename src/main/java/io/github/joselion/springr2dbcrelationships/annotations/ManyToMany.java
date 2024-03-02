@@ -29,7 +29,7 @@ import org.springframework.data.domain.Sort.Direction;
 public @interface ManyToMany {
 
   /**
-   * Whether "orphan" entities should be deleted or not. Defaults to {@code false}.
+   * Whether "orphan" entities are deleted or not. Defaults to {@code false}.
    * 
    * <p>Usually, many-to-many relationships are not mutually exclusive to each
    * other, meaning that one can exist without the other even when they are not
@@ -39,7 +39,7 @@ public @interface ManyToMany {
    * join table. Setting this option to {@code true} will also delete the
    * "orphan" entities.
    *
-   * @return {@code true} if "orphan" entities should also be deleted, {@code false}
+   * @return {@code true} if "orphan" entities are deleted, {@code false}
    *         otherwise
    * @apiNote given the nature of many-to-many relationships, setting this
    *          option to {@code true} is highly discouraged as it can produce
@@ -48,28 +48,28 @@ public @interface ManyToMany {
   boolean deleteOrphans() default false;
 
   /**
-   * Used to specify the name of the join table responsible for the
-   * many-to-many relationship between two tables. This is usually optional if
-   * the name of the join table matches the names of both related tables joined
-   * by an underscore (in any order).
+   * Specifies the name of the join table responsible for the many-to-many
+   * relationship between two tables. This is optional if the name of the join
+   * table matches the names of both related tables joined by an underscore
+   * (in any order).
    *
    * <p>For example, given a table {@code author} and a table {@code book}, the
-   * default join table for the relationship can be either {@code author_book}
-   * or {@code book_author}.
+   * join table for the relationship can either be inferred as {@code author_book}
+   * or as {@code book_author}.
    *
    * @return the name of the relationship join table
    */
   String joinTable() default "";
 
   /**
-   * Used to specify the name of the "foreign key" column that maps the join
-   * table with the linked table. This is usually optional if the column's name
-   * matches the linked table name followed by an {@code _id} suffix.
+   * Specifies the name of the "foreign key" column that maps the join table
+   * with the linked table. This is optional if the column's name matches the
+   * linked table name followed by an {@code _id} suffix.
    *
    * <p>For example, given a table {@code author} and a table {@code book}, and
    * given the annotation is used in a field of {@code author}'s entity, we can
    * say the linked table is {@code book} and its "foreign key" column in the
-   * join table will be {@code book_id} by default.
+   * join table is inferred as {@code book_id}.
    *
    * @return the name of the column linking the join table
    */
@@ -89,14 +89,13 @@ public @interface ManyToMany {
   boolean linkOnly() default false;
 
   /**
-   * Used to specify the name of the "foreign key" column that maps the
-   * annotated field's entity with the join table. This is usually optional if
-   * the column's name matches the entity's table name followed by an {@code _id}
-   * suffix.
+   * Specifies the name of the "foreign key" column that maps the annotated
+   * field's entity with the join table. This is optional if the column's name
+   * matches the entity's table name followed by an {@code _id} suffix.
    *
    * <p>For example, given a table {@code author} and a table {@code book}, and
    * given the annotation is used in a field of {@code author}'s entity, the
-   * "foreign key" column in the join table will be {@code author_id} by default.
+   * "foreign key" column in the join table is inferred as {@code author_id}.
    *
    * @return the name of the column mapping the join table
    */
@@ -112,20 +111,20 @@ public @interface ManyToMany {
   boolean readonly() default false;
 
   /**
-   * The column used to sort the populated children entities. When not
-   * specified, the annotation tries to find the field associated to
-   * {@link Auditable#getCreatedDate()} or annotated with {@link CreatedDate}.
-   * If none can be resolved, falls back to {@code "created_at"} by default.
+   * Specifies the column used to sort the populated associated entities.
    * 
-   * <p>If all of the above fails, the children will be unsorted.
+   * <p>By default, the annotation tries to find the field associated with
+   * {@link Auditable#getCreatedDate()} or annotated with {@link CreatedDate @CreatedDate}.
+   * If none can be found, it'll try to find a {@code "created_at"} column as a
+   * last resort. If all of that fails, the children will be unsorted.
    *
    * @return the sorting column name
    */
   String sortBy() default "";
 
   /**
-   * The direction to sort the populated children entities. Defaults to
-   * {@link Direction#DESC ascending} direction.
+   * Specifies in which direction the populated children entities are sorted.
+   * Defaults to {@link Direction#DESC}.
    *
    * @return the sort direction
    */

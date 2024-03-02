@@ -9,21 +9,21 @@ import org.springframework.data.r2dbc.core.R2dbcEntityTemplate;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * Relationships autoconfiguration.
+ * R2DBC Relationships auto-configuration.
  */
 @Slf4j
 @Configuration
-public class RelationshipsAutoConfiguration {
+public class R2dbcRelationshipsAutoConfiguration {
 
   /**
    * Default configuration constructor.
    */
-  protected RelationshipsAutoConfiguration() {
+  protected R2dbcRelationshipsAutoConfiguration() {
     log.info("R2DBC Relationships auto-configuration loaded.");
   }
 
   /**
-   * Creates the {@link RelationshipsCallbacks} bean.
+   * Creates the {@link R2dbcRelationshipsCallbacks} bean.
    *
    * @param <T> the type of the entity in the callback
    * @param template the r2dbc entity template
@@ -31,10 +31,10 @@ public class RelationshipsAutoConfiguration {
    * @return the relationship callbacks bean
    */
   @Bean
-  public <T> RelationshipsCallbacks<T> relationshipsCallbacks(
+  public <T> R2dbcRelationshipsCallbacks<T> relationshipsCallbacks(
     final @Lazy R2dbcEntityTemplate template,
     final ApplicationContext context
   ) {
-    return new RelationshipsCallbacks<>(template, context);
+    return new R2dbcRelationshipsCallbacks<>(template, context);
   }
 }

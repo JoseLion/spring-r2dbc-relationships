@@ -57,42 +57,42 @@ public @interface OneToMany {
   boolean linkOnly() default false;
 
   /**
-   * Used to specify the name of the "foreign key" column on the child table.
-   * This is usually optional if the name of the column matches the name of the
-   * parent table followed by an {@code _id} suffix.
+   * Specifies the name of the "foreign key" column on the child table. This is
+   * optional if the column's name matches the parent's table name followed by
+   * an {@code _id} suffix.
    *
-   * <p>For example, given the parent table is {@code country} and the child
-   * table is {@code city}. By default, the annotation will use {@code country_id}
-   * as the "foreign key" column of the {@code city} table.
+   * <p>For example, given a parent table {@code country} and a child table
+   * {@code city}, the "foreign key" column of the {@code city} table will be
+   * inferred as {@code country_id}.
    *
-   * @return the name of the "foreign key" column in the child table
+   * @return the "foreign key" column name in the child table
    */
   String mappedBy() default "";
 
   /**
-   * Whether the entities on the annotated field are readonly or not. I.e., the
-   * children entities are never persisted. Defaults to {@code false}.
+   * Whether the children entities are read-only or not, meaning they are never
+   * persisted or linked to the parent. Defaults to {@code false}.
    *
-   * @return {@code true} if the children entities should be readonly, {@code false}
+   * @return {@code true} if the children entities are read-only, {@code false}
    *         otherwise
    */
   boolean readonly() default false;
 
   /**
-   * The column used to sort the populated children entities. When not
-   * specified, the annotation tries to find the field associated to
-   * {@link Auditable#getCreatedDate()} or annotated with {@link CreatedDate}.
-   * If none can be resolved, falls back to {@code "created_at"} by default.
+   * Specifies the column used to sort the populated children entities.
    * 
-   * <p>If all of the above fails, the children will be unsorted.
+   * <p>By default, the annotation tries to find the field associated with
+   * {@link Auditable#getCreatedDate()} or annotated with {@link CreatedDate @CreatedDate}.
+   * If none can be found, it'll try to find a {@code "created_at"} column as a
+   * last resort. If all of that fails, the children will be unsorted.
    *
    * @return the sorting column name
    */
   String sortBy() default "";
 
   /**
-   * The direction to sort the populated children entities. Defaults to
-   * {@link Direction#DESC ascending} direction.
+   * Specifies in which direction the populated children entities are sorted.
+   * Defaults to {@link Direction#DESC}.
    *
    * @return the sort direction
    */

@@ -26,23 +26,23 @@ import org.springframework.data.annotation.Transient;
 public @interface ManyToOne {
 
   /**
-   * Used to specify the name of the "foreign key" column in the current
-   * entity's table. This is usually optional because the anotation can infer
-   * the "foreign key" column name in two different ways:
+   * Specifies the name of the "foreign key" column in the current entity's
+   * table. This is optional because the annotation can infer the "foreign key"
+   * column name in two different ways:
    *
-   * <p>1. The name of the column matches the name of the parent table
-   * followed by an {@code _id} suffix.
+   * <p>1. The column's name matches the parent table's name followed by an
+   * {@code _id} suffix.
    *
-   * <p>2. The name of the column matches the name of the annotated field
-   * followed by an {@code _id} suffix.
+   * <p>2. The column's name matches the name of the annotated field followed
+   * by an {@code _id} suffix.
    *
-   * <p>For example, given a parent table {@code country}, a child table
-   * {@code city}, and the annotated field {@code @OneToMany Country originCountry;}.
-   * By default, the "foreign key" column of the {@code city} table will be
-   * inferred as {@code country_id} using option (1). If that fails, it will try
-   * {@code origin_country_id} using option (2).
+   * <p>For example, given a parent table {@code country}, a child table {@code city},
+   * and the annotated field {@code @OneToMany Country originCountry;}. The
+   * "foreign key" column of the {@code city} table will be inferred as either
+   * {@code country_id} using option (1) or as {@code origin_country_id} using
+   * option (2).
    *
-   * @return the name of the "foreign key" column of the entity table
+   * @return the "foreign key" column name
    */
   String foreignKey() default "";
 
