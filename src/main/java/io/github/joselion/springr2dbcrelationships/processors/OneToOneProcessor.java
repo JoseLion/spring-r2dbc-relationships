@@ -43,7 +43,7 @@ public record OneToOneProcessor(
     final var fieldProjection = field.getType();
     final var fieldType = this.domainFor(fieldProjection);
     final var isBackReference = Optional.of(annotation)
-      .filter(OneToOne::backReference)
+      .filter(OneToOne::backreference)
       .isPresent();
     final var mappedBy = Optional.of(annotation)
       .map(OneToOne::mappedBy)

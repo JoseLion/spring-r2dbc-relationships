@@ -17,7 +17,7 @@ public record PhoneDetails(
   @Id @Nullable UUID id,
   LocalDateTime createdAt,
   UUID phoneId,
-  @OneToOne(backReference = true) Phone phone,
+  @OneToOne(backreference = true) Phone phone,
   String provider,
   String technology
 ) {

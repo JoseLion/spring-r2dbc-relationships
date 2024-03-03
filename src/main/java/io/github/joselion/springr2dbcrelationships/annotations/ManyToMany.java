@@ -35,7 +35,7 @@ public @interface ManyToMany {
    * other, meaning that one can exist without the other even when they are not
    * linked in their join table. In this context, "orphans" refers to all
    * entities no longer linked to the current entity. By default, the
-   * annotation will only delete the links to the "orphans" entities in the
+   * annotation will only delete the links to the "orphan" entities in the
    * join table. Setting this option to {@code true} will also delete the
    * "orphan" entities.
    *

@@ -37,7 +37,7 @@ public @interface OneToOne {
    * @return {@code true} if the field is a backreference, {@code false}
    *         otherwise
    */
-  boolean backReference() default false;
+  boolean backreference() default false;
 
   /**
    * Specifies the name of the "foreign key" column in the associated table.
