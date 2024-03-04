@@ -1,15 +1,20 @@
 package io.github.joselion.springr2dbcrelationships.processors;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static reactor.function.TupleUtils.consumer;
 
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import io.github.joselion.springr2dbcrelationships.models.details.Details;
+import io.github.joselion.springr2dbcrelationships.models.details.DetailsRepository;
+import io.github.joselion.springr2dbcrelationships.models.features.Features;
+import io.github.joselion.springr2dbcrelationships.models.features.FeaturesRepository;
+import io.github.joselion.springr2dbcrelationships.models.mobile.Mobile;
+import io.github.joselion.springr2dbcrelationships.models.mobile.MobileRepository;
 import io.github.joselion.springr2dbcrelationships.models.phone.Phone;
 import io.github.joselion.springr2dbcrelationships.models.phone.PhoneRepository;
-import io.github.joselion.springr2dbcrelationships.models.phone.details.PhoneDetails;
-import io.github.joselion.springr2dbcrelationships.models.phone.details.PhoneDetailsRepository;
 import io.github.joselion.testing.annotations.IntegrationTest;
 import io.github.joselion.testing.transactional.TxStepVerifier;
 import reactor.core.publisher.Mono;
@@ -20,36 +25,40 @@ import reactor.core.publisher.Mono;
   private PhoneRepository phoneRepo;
 
   @Autowired
-  private PhoneDetailsRepository phoneDetailsRepo;
+  private DetailsRepository detailsRepo;
 
-  private final PhoneDetails details = PhoneDetails.empty()
-    .withProvider("Movistar")
-    .withTechnology("5G");
+  @Autowired
+  private MobileRepository mobileRepo;
 
-  private final Phone phone = Phone.of("+593998591484");
+  @Autowired
+  private FeaturesRepository featuresRepo;
+
+  private final Details myDetails = Details.of("Movistar", "5G");
+
+  private final Phone myPhone = Phone.of("+593998591484");
+
+  private final Mobile myMobile = Mobile.of("+593998591484");
+
+  private final Features myFeatures = Features.of("5G");
 
   @Nested class populate {
     @Nested class when_the_annotation_is_in_the_parent {
       @Test void populates_the_field_with_the_child_entity() {
-        phoneRepo.save(phone)
+        Mono.just(myDetails)
+          .map(myPhone::withDetails)
+          .flatMap(phoneRepo::save)
           .map(Phone::id)
-          .delayUntil(id ->
-            Mono.just(id)
-              .map(details::withPhoneId)
-              .flatMap(phoneDetailsRepo::save)
-          )
           .flatMap(phoneRepo::findById)
           .as(TxStepVerifier::withRollback)
-          .assertNext(found -> {
-            final var phoneDetails = found.phoneDetails();
+          .assertNext(phone -> {
+            final var details = phone.details();
 
-            assertThat(found.id()).isNotNull();
-            assertThat(phoneDetails).isNotNull();
-            assertThat(phoneDetails.phone()).isNull();
-            assertThat(phoneDetails.id()).isNotNull();
-            assertThat(phoneDetails.phoneId()).isEqualTo(found.id());
-            assertThat(phoneDetails.provider()).isEqualTo(details.provider());
-            assertThat(phoneDetails.technology()).isEqualTo(details.technology());
+            assertThat(details).isNotNull();
+            assertThat(details.phone()).isNull();
+            assertThat(details.id()).isNotNull();
+            assertThat(details.phoneId()).isEqualTo(phone.id());
+            assertThat(details.provider()).isEqualTo(myDetails.provider());
+            assertThat(details.technology()).isEqualTo(myDetails.technology());
           })
           .verifyComplete();
       }
@@ -57,20 +66,19 @@ import reactor.core.publisher.Mono;
 
     @Nested class when_the_annotation_is_in_the_child {
       @Test void populates_the_field_with_the_parent_entity() {
-        phoneRepo.save(phone)
-          .map(Phone::id)
-          .map(details::withPhoneId)
-          .flatMap(phoneDetailsRepo::save)
-          .map(PhoneDetails::id)
-          .flatMap(phoneDetailsRepo::findById)
+        Mono.just(myPhone)
+          .map(myDetails::withPhone)
+          .flatMap(detailsRepo::save)
+          .map(Details::id)
+          .flatMap(detailsRepo::findById)
           .as(TxStepVerifier::withRollback)
-          .assertNext(found -> {
-            final var parent = found.phone();
+          .assertNext(details -> {
+            final var parent = details.phone();
 
             assertThat(parent).isNotNull();
-            assertThat(parent.phoneDetails()).isNull();
+            assertThat(parent.details()).isNull();
             assertThat(parent.id()).isNotNull();
-            assertThat(parent.number()).isEqualTo(phone.number());
+            assertThat(parent.number()).isEqualTo(myPhone.number());
           })
           .verifyComplete();
       }
@@ -81,82 +89,181 @@ import reactor.core.publisher.Mono;
     @Nested class when_the_annotation_is_in_the_parent {
       @Nested class and_the_child_does_not_exist {
         @Test void creates_the_child_entity() {
-          Mono.just(details)
-            .map(phone::withPhoneDetails)
+          Mono.just(myDetails)
+            .map(myPhone::withDetails)
             .flatMap(phoneRepo::save)
-            .map(Phone::phoneDetails)
-            .mapNotNull(PhoneDetails::id)
-            .flatMap(phoneDetailsRepo::findById)
+            .map(Phone::details)
+            .mapNotNull(Details::id)
+            .flatMap(detailsRepo::findById)
+            .zipWhen(x -> phoneRepo.findAll().collectList())
             .as(TxStepVerifier::withRollback)
-            .assertNext(found -> {
-              assertThat(found.id()).isNotNull();
-              assertThat(found.provider()).isEqualTo(details.provider());
-              assertThat(found.technology()).isEqualTo(details.technology());
-            })
+            .assertNext(consumer((details, allPhones) -> {
+              assertThat(allPhones).hasSize(1);
+              assertThat(details.id()).isNotNull();
+              assertThat(details.phone()).isNotNull();
+              assertThat(details.phoneId()).isNotNull();
+              assertThat(details.provider()).isEqualTo(myDetails.provider());
+              assertThat(details.technology()).isEqualTo(myDetails.technology());
+            }))
             .verifyComplete();
         }
       }
 
       @Nested class and_the_child_already_exists {
         @Test void updates_the_child_entity() {
-          phoneRepo.save(phone)
-            .map(Phone::id)
-            .map(details::withPhoneId)
-            .flatMap(phoneDetailsRepo::save)
-            .map(saved -> saved.withTechnology("5G"))
-            .map(phone::withPhoneDetails)
+          Mono.just(myDetails)
+            .map(myPhone::withDetails)
             .flatMap(phoneRepo::save)
-            .map(Phone::phoneDetails)
-            .map(PhoneDetails::id)
-            .flatMap(phoneDetailsRepo::findById)
+            .map(phone -> phone.withDetailsBy(details -> details.withTechnology("5G+")))
+            .flatMap(phoneRepo::save)
+            .map(Phone::details)
+            .map(Details::id)
+            .flatMap(detailsRepo::findById)
+            .zipWhen(x -> phoneRepo.findAll().collectList())
             .as(TxStepVerifier::withRollback)
-            .assertNext(found -> {
-              assertThat(found.id()).isNotNull();
-              assertThat(found.provider()).isEqualTo(details.provider());
-              assertThat(found.technology()).isEqualTo("5G");
-            })
+            .assertNext(consumer((details, allPhones) -> {
+              assertThat(allPhones).singleElement()
+                .extracting(Phone::id)
+                .isEqualTo(details.phoneId());
+              assertThat(details.phoneId()).isNotNull();
+              assertThat(details.provider()).isEqualTo(myDetails.provider());
+              assertThat(details.technology()).isEqualTo("5G+");
+            }))
             .verifyComplete();
         }
       }
 
       @Nested class and_the_child_field_is_null {
-        @Test void deletes_the_orphan_child() {
-          Mono.just(details)
-            .map(phone::withPhoneDetails)
-            .flatMap(phoneRepo::save)
-            .delayUntil(saved -> {
-              final var updated = saved.withPhoneDetails(null);
-              return phoneRepo.save(updated);
-            })
-            .map(Phone::phoneDetails)
-            .map(PhoneDetails::id)
-            .flatMap(phoneDetailsRepo::findById)
-            .as(TxStepVerifier::withRollback)
-            .expectNextCount(0)
-            .verifyComplete();
+        @Nested class and_the_keepOrphan_option_is_false {
+          @Test void deletes_the_orphan_child() {
+            Mono.just(myDetails)
+              .map(myPhone::withDetails)
+              .flatMap(phoneRepo::save)
+              .delayUntil(phone -> {
+                final var updated = phone.withDetails(null);
+                return phoneRepo.save(updated);
+              })
+              .map(Phone::details)
+              .map(Details::id)
+              .flatMap(detailsRepo::findById)
+              .as(TxStepVerifier::withRollback)
+              .expectNextCount(0)
+              .verifyComplete();
+          }
+        }
+
+        @Nested class and_the_keepOrphan_option_is_true {
+          @Test void unlinks_the_orphan_child() {
+             Mono.just(myFeatures)
+              .map(myMobile::withFeatures)
+              .flatMap(mobileRepo::save)
+              .delayUntil(mobile -> {
+                final var updated = mobile.withFeatures(null);
+                return mobileRepo.save(updated);
+              })
+              .map(Mobile::features)
+              .map(Features::id)
+              .flatMap(featuresRepo::findById)
+              .as(TxStepVerifier::withRollback)
+              .assertNext(features -> {
+                assertThat(features.mobile()).isNull();
+                assertThat(features.mobileId()).isNull();
+              })
+              .verifyComplete();
+          }
         }
       }
     }
 
     @Nested class when_the_annotation_is_in_the_child {
-      @Test void never_persists_the_parent() {
-        phoneRepo.save(phone)
-          .flatMap(saved ->
-            Mono.just(saved)
-              .map(Phone::id)
-              .map(details::withPhoneId)
-              .flatMap(phoneDetailsRepo::save)
-              .map(pd -> pd.withPhone(saved.withNumber("N/A")))
-          )
-          .flatMap(phoneDetailsRepo::save)
-          .map(PhoneDetails::phone)
-          .map(Phone::id)
-          .flatMap(phoneRepo::findById)
-          .as(TxStepVerifier::withRollback)
-          .assertNext(found -> {
-            assertThat(found.number()).isEqualTo(phone.number());
-          })
-          .verifyComplete();
+      @Nested class and_the_parent_does_not_exist {
+        @Test void creates_the_parent_entity() {
+          Mono.just(myPhone)
+            .map(myDetails::withPhone)
+            .flatMap(detailsRepo::save)
+            .map(Details::phoneId)
+            .flatMap(phoneRepo::findById)
+            .zipWhen(x -> detailsRepo.findAll().collectList())
+            .as(TxStepVerifier::withRollback)
+            .assertNext(consumer((phone, allDetails) -> {
+              assertThat(allDetails).hasSize(1);
+              assertThat(phone.details()).isNotNull();
+              assertThat(phone.details().id()).isNotNull();
+              assertThat(phone.number()).isEqualTo(myPhone.number());
+            }))
+            .verifyComplete();
+        }
+      }
+
+      @Nested class and_the_parent_already_exists {
+        @Test void updates_the_parent_entity() {
+          Mono.just(myPhone)
+            .map(myDetails::withPhone)
+            .flatMap(detailsRepo::save)
+            .map(details -> details.withPhoneBy(phone -> phone.withNumber("1234567890")))
+            .flatMap(detailsRepo::save)
+            .map(Details::phoneId)
+            .flatMap(phoneRepo::findById)
+            .zipWhen(x -> detailsRepo.findAll().collectList())
+            .as(TxStepVerifier::withRollback)
+            .assertNext(consumer((phone, allDetails) -> {
+              assertThat(allDetails)
+                .singleElement()
+                .extracting(Details::phoneId)
+                .isNotNull()
+                .isEqualTo(phone.id());
+              assertThat(phone.details()).isNotNull();
+              assertThat(phone.details().id()).isNotNull();
+              assertThat(phone.number()).isEqualTo("1234567890");
+            }))
+            .verifyComplete();
+        }
+      }
+
+      @Nested class and_the_parent_is_null {
+        @Nested class and_the_keepOrphan_option_is_false {
+          @Test void deletes_the_orphan_parent() {
+            Mono.just(myPhone)
+              .map(myDetails::withPhone)
+              .flatMap(detailsRepo::save)
+              .flatMap(details -> {
+                final var updated = details.withPhone(null);
+                return Mono.zip(
+                  detailsRepo.save(updated),
+                  phoneRepo.count()
+                );
+              })
+              .as(TxStepVerifier::withRollback)
+              .assertNext(consumer((details, phoneCount) -> {
+                assertThat(phoneCount).isZero();
+                assertThat(details.phone()).isNull();
+                assertThat(details.phoneId()).isNull();
+              }))
+              .verifyComplete();
+          }
+        }
+
+        @Nested class and_the_keepOrphan_option_is_true {
+          @Test void unlinks_the_orphan_parent() {
+            Mono.just(myMobile)
+              .map(myFeatures::withMobile)
+              .flatMap(featuresRepo::save)
+              .flatMap(features -> {
+                final var updated = features.withMobile(null);
+                return Mono.zip(
+                  featuresRepo.save(updated),
+                  mobileRepo.findById(features.mobileId())
+                );
+              })
+              .as(TxStepVerifier::withRollback)
+              .assertNext(consumer((features, mobile) -> {
+                assertThat(features.mobile()).isNull();
+                assertThat(features.mobileId()).isNull();
+                assertThat(mobile.features()).isNull();
+              }))
+              .verifyComplete();
+          }
+        }
       }
     }
   }

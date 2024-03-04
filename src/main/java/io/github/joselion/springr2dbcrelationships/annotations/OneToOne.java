@@ -26,18 +26,19 @@ import org.springframework.data.annotation.Transient;
 public @interface OneToOne {
 
   /**
-   * Whether or not the annotated field is only a backreference in the
-   * one-to-one relationship. Defaults to {@code false}.
+   * Whether the orphan entity is preserved or not. Defaults to {@code false}.
    *
-   * <p>Using the {@code @OneToOne} annotation in the child side instead of the
-   * parent is usually intended to have a backreference to the parent.
-   * Therefore, when this option is {@code true}, the {@link #readonly()}
-   * property is changed to {@code true} by default.
+   * <p>Usually, one-to-one relationships have a parent-child configuration,
+   * meaning the child needs to have the parent assigned to it. By default, the
+   * annotation will delete the associated entity when it becomes an orphan or
+   * the child is no longer assigned to the parent. You can prevent this
+   * behavior by setting this option to {@code true}, in which case the
+   * annotation will only remove the link of the orphan entity with the parent.
    *
-   * @return {@code true} if the field is a backreference, {@code false}
+   * @return {@code true} if orphan entities should be presereved, {@code false}
    *         otherwise
    */
-  boolean backreference() default false;
+  boolean keepOrphan() default false;
 
   /**
    * Specifies the name of the "foreign key" column in the associated table.
@@ -50,9 +51,9 @@ public @interface OneToOne {
    * <p>2. The column's name matches the name of the annotated field followed
    * by an {@code _id} suffix.
    * 
-   * <p>For example, given a parent table {@code phone}, a child table {@code phone_details},
-   * and the annotated field {@code @OneToOne PhoneDetails details;}. The
-   * "foreign key" column of the {@code phone_details} table will be inferred
+   * <p>For example, given a parent table {@code phone}, a child table {@code details},
+   * and the annotated field {@code @OneToOne Details details;}. The
+   * "foreign key" column of the {@code details} table will be inferred
    * as either {@code phone_id} using option (1) or as {@code details_id} using
    * option (2).
    *

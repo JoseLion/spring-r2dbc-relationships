@@ -84,7 +84,7 @@ Spring R2DBC is not an ORM, and _Spring R2DBC Relationships_ abides by the same 
 
 The `@OneToOne` annotation lets you mark fields to have a one-to-one relationship. The default behavior of the annotation is to populate the field after mapping the entity object, create/update the associated entity, and link the relation by setting the "foreign key" field in the proper entity.
 
-You can use the annotation on both sides of the relationship to achieve a bidirectional association. However, doing so can also lead to unexpected updates when persisting the backreference. To solve this problem, you can set `backreference = true` in the annotation parameters.
+You can use the annotation on both sides of the relationship to achieve a bidirectional association--the annotation handles cyclic persistence and population automatically. However, persisting from the parent side of the relationship is highly recommended since the parent entity will be unlinked (and optionally deleted) whenever the parent field in the child is `null`. So, suppose you configure the foreign key in the database to `ON DELETE CASCADE`. In that case, the persist operation will fail with a `TransientDataAccessResourceException` because the child entity gets deleted before the update can finish. Similarly, if the foreign key column is `NOT NULL`, you won't be able to have a child without its parent.
 
 #### Example
 
@@ -97,7 +97,7 @@ CREATE TABLE phone(
   number varchar(255) NOT NULL
 );
 
-CREATE TABLE phone_details(
+CREATE TABLE details(
   id uuid NOT NULL DEFAULT random_uuid() PRIMARY KEY,
   created_at timestamp(9) NOT NULL DEFAULT localtimestamp(),
   phone_id uuid NOT NULL,
@@ -107,7 +107,7 @@ CREATE TABLE phone_details(
 );
 ```
 
-You can use the `@OneToOne` annotation in both `Phone` and `PhoneDetails` entities:
+You can use the `@OneToOne` annotation in both `Phone` and `Details` entities:
 
 ```java
 @With
@@ -115,18 +115,18 @@ public record Phone(
   @Id UUID id,
   LocalDateTime createdAt,
   String number,
-  @OneToOne PhoneDetails details
+  @OneToOne Details details
 ) {
 
  // implementation omitted...
 }
 
 @With
-public record PhoneDetails(
+public record Details(
   @Id UUID id,
   LocalDateTime createdAt,
   UUID phoneId,
-  @OneToOne(backreference = true) Phone phone,
+  @OneToOne(readonly = true) Phone phone,
   String provider,
   String technology
 ) {
@@ -135,8 +135,8 @@ public record PhoneDetails(
 }
 ```
 
-> [!NOTE] 
-> Notice that the `PhoneDetails` annotation is a backreference to `Phone`. Setting `backreference = true` will also make the annotated field entity read-only by default, meaning it's never persisted or linked. This behavior lets us safely persist a `Phone` instance containing a `PhoneDetails` field that, in turn, includes a `Phone` field, which might not be the same as the first `Phone` instance.
+> [!NOTE]
+> The annotation in `Details` is a backreference to `Phone`, and in the example details cannot exist without a phone. To prevent data integrity violations, we have configured the `Details#phone` field as read-only, meaning it's never persisted or linked whenever `Details` persists.
 
 ### @OneToMany
 
@@ -146,6 +146,10 @@ You can achieve bidirectional one-to-many relationships using the `@ManyToOne` a
 
 > [!IMPORTANT]
 > The annotation only supports `List<T>` types for now. We'll consider support for more collection types as the use cases present.
+
+#### Handling orphans
+
+Usually, one-to-one relationships have a parent-child configuration, meaning the child needs to have the parent assigned to it. By default, the annotation will delete the associated entity when it becomes an orphan or the child is no longer assigned to the parent. You can prevent this behavior by setting `keepOrphan = true` in the annotation parameters, in which case it will only remove the link of the orphan entity with the parent.
 
 #### Example
 
@@ -288,7 +292,7 @@ However, there's also the case where you manage the associations from one side o
 
 Spring Data allows us to use [Entity Projections](https://docs.spring.io/spring-data/relational/reference/repositories/projections.html) right out of the box--there's no need to add anything to the projected type. However, _Spring R2DBC Relationships_ needs the complete entity information so the relationship processors can obtain accurate metadata hidden in the projection.
 
-To use projections on relationship types, you can annotate the type with `@ProjectionOf(..)` and provide the projected type its value parameter. For example, given a `Person` entity that contains a large number of properties, you can create a projection named `PersonMin` with minimum properties:
+Using projections on relationship types, you can annotate the type with `@ProjectionOf(..)` and provide the projected type's value parameter. For example, given a `Person` entity that contains a large number of properties, you can create a projection named `PersonMin` with minimum properties:
 
 ```java
 @With
