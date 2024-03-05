@@ -1,4 +1,7 @@
 [![CI](https://github.com/JoseLion/spring-r2dbc-relationships/actions/workflows/ci.yml/badge.svg)](https://github.com/JoseLion/spring-r2dbc-relationships/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/JoseLion/spring-r2dbc-relationships/actions/workflows/codeql.yml/badge.svg)](https://github.com/JoseLion/spring-r2dbc-relationships/actions/workflows/codeql.yml)
+[![Release](https://github.com/JoseLion/spring-r2dbc-relationships/actions/workflows/release.yml/badge.svg)](https://github.com/JoseLion/spring-r2dbc-relationships/actions/workflows/release.yml)
+[![Maven Central](https://img.shields.io/maven-central/v/io.github.joselion/spring-r2dbc-relationships?logo=sonatype)](https://central.sonatype.com/artifact/io.github.joselion/spring-r2dbc-relationships)
 [![License](https://img.shields.io/github/license/JoseLion/spring-r2dbc-relationships)](https://github.com/JoseLion/spring-r2dbc-relationships/blob/main/LICENSE)
 [![Known Vulnerabilities](https://snyk.io/test/github/JoseLion/spring-r2dbc-relationships/badge.svg)](https://snyk.io/test/github/JoseLion/spring-r2dbc-relationships)
 
@@ -34,6 +37,8 @@ _Spring R2DBC Relationships_ leverages the [Entity Callback API](https://docs.sp
 - [License](#license)
 
 ## Install
+
+[![Maven Central](https://img.shields.io/maven-central/v/io.github.joselion/spring-r2dbc-relationships?logo=sonatype)](https://central.sonatype.com/artifact/io.github.joselion/spring-r2dbc-relationships)
 
 _Spring R2DBC Relationships_ is available in [Maven Central](https://central.sonatype.com/). You can also find a link and the latest version on the badge above.
 
