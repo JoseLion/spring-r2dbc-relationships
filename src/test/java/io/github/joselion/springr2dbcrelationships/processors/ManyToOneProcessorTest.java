@@ -58,7 +58,6 @@ import reactor.core.publisher.Mono;
           assertThat(city.countryId()).isEqualTo(countryId);
           assertThat(city.country()).isNotNull();
           assertThat(city.country().id()).isEqualTo(countryId);
-          System.err.println("*********** " + city.country());
           assertThat(city.country().cities())
             .allSatisfy(c -> assertThat(c.country()).isNull())
             .extracting(City::name)
