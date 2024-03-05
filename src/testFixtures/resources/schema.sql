@@ -4,13 +4,27 @@ CREATE TABLE phone(
   number varchar(255) NOT NULL
 );
 
-CREATE TABLE phone_details(
+CREATE TABLE details(
   id uuid NOT NULL DEFAULT random_uuid() PRIMARY KEY,
   created_at timestamp(9) NOT NULL DEFAULT localtimestamp(),
-  phone_id uuid NOT NULL,
+  phone_id uuid,
   provider varchar(255) NOT NULL,
   technology varchar(255) NOT NULL,
-  FOREIGN KEY (phone_id) REFERENCES phone ON DELETE CASCADE
+  FOREIGN KEY (phone_id) REFERENCES phone ON DELETE SET NULL
+);
+
+CREATE TABLE mobile(
+  id uuid NOT NULL DEFAULT random_uuid() PRIMARY KEY,
+  created_at timestamp(9) NOT NULL DEFAULT localtimestamp(),
+  number varchar(255) NOT NULL
+);
+
+CREATE TABLE features(
+  id uuid NOT NULL DEFAULT random_uuid() PRIMARY KEY,
+  created_at timestamp(9) NOT NULL DEFAULT localtimestamp(),
+  mobile_id uuid,
+  technology varchar(255) NOT NULL,
+  FOREIGN KEY (mobile_id) REFERENCES mobile ON DELETE SET NULL
 );
 
 CREATE TABLE country(

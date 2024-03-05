@@ -1,7 +1,6 @@
 package io.github.joselion.springr2dbcrelationships;
 
 import static java.util.function.Predicate.not;
-import static reactor.function.TupleUtils.function;
 
 import java.util.List;
 import java.util.function.Function;
@@ -103,7 +102,7 @@ public record R2dbcRelationshipsCallbacks<T>(
         Mono.just(OneToOne.class)
           .mapNotNull(field::getAnnotation)
           .filter(not(OneToOne::readonly))
-          .filter(not(OneToOne::backreference))
+          .filter(not(oneToOneProcessor.isBackReference(field)))
           .flatMap(oneToOneProcessor.persist(field))
           .switchIfEmpty(
             Mono.just(OneToMany.class)
@@ -131,21 +130,32 @@ public record R2dbcRelationshipsCallbacks<T>(
 
   @Override
   public Publisher<T> onBeforeConvert(final T entity, final SqlIdentifier table) {
+    final var annotations = List.of(OneToOne.class, ManyToOne.class);
+
     return Mono.just(entity)
       .map(T::getClass)
       .map(Class::getDeclaredFields)
       .flatMapIterable(List::of)
+      .filter(field -> annotations.stream().anyMatch(field::isAnnotationPresent))
       .reduce(Mono.just(entity), (acc, field) ->
-        Mono.just(ManyToOne.class)
-          .mapNotNull(field::getAnnotation)
-          .filter(ManyToOne::persist)
-          .zipWith(acc)
-          .flatMap(function((annotation, nextEntity) -> {
-            final var manyToOneProcessor = new ManyToOneProcessor(this.template, nextEntity, table, this.context);
-            return manyToOneProcessor.persist(annotation, field);
-          }))
-          .map(Commons::<T>cast)
-          .switchIfEmpty(acc)
+        acc.flatMap(nextEntity -> {
+          final var oneToOneProcessor = new OneToOneProcessor(this.template, nextEntity, table, this.context);
+          final var manyToOneProcessor = new ManyToOneProcessor(this.template, nextEntity, table, this.context);
+
+          return Mono.just(OneToOne.class)
+            .mapNotNull(field::getAnnotation)
+            .filter(not(OneToOne::readonly))
+            .filter(oneToOneProcessor.isBackReference(field))
+            .flatMap(oneToOneProcessor.persist(field))
+            .switchIfEmpty(
+              Mono.just(ManyToOne.class)
+                .mapNotNull(field::getAnnotation)
+                .filter(ManyToOne::persist)
+                .flatMap(manyToOneProcessor.persist(field))
+            )
+            .switchIfEmpty(acc);
+        })
+        .map(Commons::<T>cast)
       )
       .flatMap(Function.identity())
       .defaultIfEmpty(entity);

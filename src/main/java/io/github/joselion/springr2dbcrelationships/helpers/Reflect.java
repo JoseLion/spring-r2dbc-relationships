@@ -136,7 +136,7 @@ public final class Reflect {
    *                          fails to be invoked
    */
   @Nullable
-  public static <T> T update(final T target, final Field field, final Object value) {
+  public static <T> T update(final T target, final Field field, final @Nullable Object value) {
     final var targetType = field.getDeclaringClass();
     final var fieldType = field.getType();
 
@@ -191,7 +191,7 @@ public final class Reflect {
    * @return a function that takes the target as argument and returns the
    *         updated target
    */
-  public static <T> Function<T, @Nullable T> update(final Field field, final Object value) {
+  public static <T> Function<T, @Nullable T> update(final Field field, final @Nullable Object value) {
     return target -> Reflect.update(target, field, value);
   }
 
@@ -208,7 +208,7 @@ public final class Reflect {
    *                          fails to be invoked
    */
   @Nullable
-  public static <T> T update(final T target, final String fieldName, final Object value) {
+  public static <T> T update(final T target, final String fieldName, final @Nullable Object value) {
     final var field = Maybe.of(fieldName)
       .solve(target.getClass()::getDeclaredField)
       .orThrow(ReflectException::of);
@@ -225,7 +225,7 @@ public final class Reflect {
    * @return a function that takes the target as argument and returns the
    *         updated target
    */
-  public static <T> Function<T, @Nullable T> update(final String fieldName, final Object value) {
+  public static <T> Function<T, @Nullable T> update(final String fieldName, final @Nullable Object value) {
     return target -> Reflect.update(target, fieldName, value);
   }
 
