@@ -103,6 +103,7 @@ public record ManyToOneProcessor(
         final var savedId = this.idValueOf(saved);
         final var newEntity = Reflect.update(this.entity, field, saved);
         return Reflect.update(newEntity, foreignField, savedId);
-      });
+      })
+      .defaultIfEmpty(Reflect.update(this.entity, foreignField, null));
   }
 }
