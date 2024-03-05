@@ -39,6 +39,8 @@ import reactor.core.publisher.Mono;
 
   private final String chicago = "Chicago";
 
+  private final String manhattan = "Manhattan";
+
   @Nested class populate {
     @Test void populates_the_field_with_the_parent_entity() {
       countryRepo.save(usa)
@@ -52,12 +54,13 @@ import reactor.core.publisher.Mono;
             .then(cityRepo.findByName(boston))
         )
         .as(TxStepVerifier::withRollback)
-        .assertNext(consumer((countryId, found) -> {
-          assertThat(found.countryId()).isEqualTo(countryId);
-          assertThat(found.country()).isNotNull();
-          assertThat(found.country().id()).isEqualTo(countryId);
-          assertThat(found.country().cities())
-            .allSatisfy(city -> assertThat(city.country()).isNull())
+        .assertNext(consumer((countryId, city) -> {
+          assertThat(city.countryId()).isEqualTo(countryId);
+          assertThat(city.country()).isNotNull();
+          assertThat(city.country().id()).isEqualTo(countryId);
+          System.err.println("*********** " + city.country());
+          assertThat(city.country().cities())
+            .allSatisfy(c -> assertThat(c.country()).isNull())
             .extracting(City::name)
             .containsExactly(chicago, boston, newYork);
         }))
@@ -66,7 +69,7 @@ import reactor.core.publisher.Mono;
   }
 
   @Nested class persist {
-    @Nested class when_the_annotation_does_not_configure_persist {
+    @Nested class when_the_persist_option_is_false {
       @Test void does_not_persist_the_annotated_field_by_default() {
         countryRepo.save(usa)
           .map(saved -> saved.withName("USA"))
@@ -90,25 +93,66 @@ import reactor.core.publisher.Mono;
       }
     }
 
-    @Nested class when_the_annotation_sets_persist_to_true {
-      @Test void persists_the_annotated_field() {
-        final var manhattan = Town.of("Manhattan");
+    @Nested class when_the_persist_option_is_true {
+      @Nested class and_the_parent_does_not_exist {
+        @Test void creates_the_parent_entity() {
+          Mono.just(usa)
+            .map(Town.of(manhattan)::withCountry)
+            .flatMap(townRepo::save)
+            .map(Town::id)
+            .flatMap(townRepo::findById)
+            .zipWhen(saved -> countryRepo.findById(saved.countryId()))
+            .as(TxStepVerifier::withRollback)
+            .assertNext(consumer((town, country) -> {
+              assertThat(town.countryId()).isEqualTo(country.id());
+              assertThat(town.country().id()).isEqualTo(country.id());
+              assertThat(country.towns())
+                .extracting(Town::name)
+                .containsExactly(manhattan);
+            }))
+            .verifyComplete();
+        }
+      }
 
-        Mono.just(usa)
-          .map(manhattan::withCountry)
-          .flatMap(townRepo::save)
-          .map(Town::id)
-          .flatMap(townRepo::findById)
-          .zipWhen(saved -> countryRepo.findById(saved.countryId()))
-          .as(TxStepVerifier::withRollback)
-          .assertNext(consumer((town, country) -> {
-            assertThat(town.countryId()).isEqualTo(country.id());
-            assertThat(town.country().id()).isEqualTo(country.id());
-            assertThat(country.towns())
-              .extracting(Town::name)
-              .containsExactly(manhattan.name());
-          }))
-          .verifyComplete();
+      @Nested class and_the_parent_does_already_exists {
+        @Test void updates_the_parent_entity() {
+          Mono.just(usa)
+            .map(Town.of(manhattan)::withCountry)
+            .flatMap(townRepo::save)
+            .map(town -> town.withCountryBy(country -> country.withName("USA")))
+            .flatMap(townRepo::save)
+            .map(Town::id)
+            .flatMap(townRepo::findById)
+            .zipWhen(saved -> countryRepo.findById(saved.countryId()))
+            .as(TxStepVerifier::withRollback)
+            .assertNext(consumer((town, country) -> {
+              assertThat(town.countryId()).isEqualTo(country.id());
+              assertThat(town.country().id()).isEqualTo(country.id());
+              assertThat(country.name()).isEqualTo("USA");
+              assertThat(country.towns())
+                .extracting(Town::name)
+                .containsExactly(manhattan);
+            }))
+            .verifyComplete();
+        }
+      }
+
+      @Nested class and_the_parent_is_null {
+        @Test void unlinks_the_entity_from_the_parent() {
+          Mono.just(usa)
+            .map(Town.of(manhattan)::withCountry)
+            .flatMap(townRepo::save)
+            .map(town -> town.withCountry(null))
+            .flatMap(townRepo::save)
+            .map(Town::id)
+            .flatMap(townRepo::findById)
+            .as(TxStepVerifier::withRollback)
+            .assertNext(town -> {
+              assertThat(town.country()).isNull();
+              assertThat(town.countryId()).isNull();
+            })
+            .verifyComplete();
+        }
       }
     }
   }

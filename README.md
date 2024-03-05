@@ -218,6 +218,8 @@ public record City(
 > [!Note]
 > Notice that having the `countryId` field, which maps to the foreign key column, is required for the relationship to work properly.
 
+If the annotation is `persist = true` and the field is `null` upon persistence, the annotation shall never delete the parent because it can still have other linked children. However, it will change the foreign key to `null` to unlink the children from the parent.
+
 ### ManyToMany
 
 The `@ManyToMany` annotation lets you mark fields to have a many-to-many relationship. The default behavior of the annotation is to populate the field after mapping the entity object, create/update the associated entities, and link the relations on the join table. The annotation uses the join table transparently, meaning you **don't need** to create an entity type for the join table on your codebase.
