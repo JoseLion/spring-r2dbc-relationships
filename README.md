@@ -8,7 +8,7 @@ A set of annotations to handle entity relationships when working on [Spring Data
 
 As of the release date of this library, Spring R2DBC does not yet offer any mechanism to manage entity relationships. Providing relations is not a trivial problem for R2DBC, as the correct way to populate the relations is by converting and emitting results as received in a single connection. Simply put, it should not collect the results into a `List` to issue queries that populate the relations. However, until R2DBC offers a proper solution, collecting the results is the only option on userland.
 
-Spring R2DBC Relationships leverages the [Entity Callback API](https://docs.spring.io/spring-data/relational/reference/r2dbc/entity-callbacks.html) to intercept the entity mapping and persistence lifecycle. Looking for field annotations and their configuration, it abstracts and generalizes the process to populate, persist, and link the relationships.
+_Spring R2DBC Relationships_ leverages the [Entity Callback API](https://docs.spring.io/spring-data/relational/reference/r2dbc/entity-callbacks.html) to intercept the entity mapping and persistence lifecycle. Looking for field annotations and their configuration, it abstracts and generalizes the process to populate, persist, and link the relationships.
 
 ## Features
 

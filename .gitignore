@@ -24,5 +24,23 @@ replay_pid*
 # Ignore Gradle build output directory
 build
 
+# NodeJS
+node_modules/
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
+
 # VSCode
 .vscode/
+
+# Eclipse
+.settings/
+.classpath
+.project
+
+# IDEA
+.idea
+*.iml

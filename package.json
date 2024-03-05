@@ -1,0 +1,19 @@
+{
+  "name": "spring-r2dbc-relationships",
+  "version": "0.0.0",
+  "description": "Spring R2DBC Relationships reelase workflow",
+  "repository": "git@github.com:JoseLion/spring-r2dbc-relationships.git",
+  "author": "JoseLion <joseluis5000l@gmail.com>",
+  "license": "MIT",
+  "packageManager": "yarn@4.1.1",
+  "engines": {
+    "node": "^21.6.2"
+  },
+  "scripts": {
+    "release": "semantic-release"
+  },
+  "devDependencies": {
+    "gradle-semantic-release-plugin": "^1.9.1",
+    "semantic-release": "^23.0.2"
+  }
+}

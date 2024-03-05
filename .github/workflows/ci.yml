@@ -22,9 +22,9 @@ jobs:
           java-version: 21
           check-latest: true
       - uses: gradle/actions/setup-gradle@v3
-      - run: ./gradlew compileJava compileTestJava
-      - run: ./gradlew checkstyleMain checkstyleTest
-      - run: ./gradlew sonarlintMain sonarlintTest
+      - run: ./gradlew compileJava compileTestJava compileTestFixturesJava
+      - run: ./gradlew checkstyleMain checkstyleTest checkstyleTestFixtures
+      - run: ./gradlew sonarlintMain sonarlintTest sonarlintTestFixtures
       - run: ./gradlew javadoc
       - run: ./gradlew test
       - run: ./gradlew build -x check
