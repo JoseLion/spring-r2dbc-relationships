@@ -3,16 +3,17 @@ package io.github.joselion.springr2dbcrelationships.processors;
 import static java.util.function.Predicate.not;
 import static org.springframework.data.relational.core.query.Criteria.where;
 import static org.springframework.data.relational.core.query.Query.query;
+import static org.springframework.data.relational.core.query.Update.update;
 
 import java.lang.reflect.Field;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Function;
 import java.util.stream.Stream;
 
 import org.springframework.context.ApplicationContext;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.r2dbc.core.R2dbcEntityTemplate;
-import org.springframework.data.relational.core.query.Update;
 import org.springframework.data.relational.core.sql.SqlIdentifier;
 
 import io.github.joselion.maybe.Maybe;
@@ -22,6 +23,7 @@ import io.github.joselion.springr2dbcrelationships.helpers.Commons;
 import io.github.joselion.springr2dbcrelationships.helpers.Reflect;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
 
 /**
  * The {@link OneToMany} annotation processor.
@@ -55,17 +57,7 @@ public record OneToManyProcessor(
 
     return Mono.just(this.entity)
       .mapNotNull(this::idValueOf)
-      .flatMap(entityId ->
-        Mono.deferContextual(ctx -> {
-          final var store = ctx.<List<Object>>getOrDefault(OneToMany.class, List.of());
-
-          return Flux.fromIterable(store)
-            .filter(entityId::equals)
-            .collectList()
-            .filter(List::isEmpty)
-            .map(x -> entityId);
-        })
-      )
+      .flatMap(this::breackingCycles)
       .flatMap(entityId ->
         this.template
           .select(innerType)
@@ -73,12 +65,7 @@ public record OneToManyProcessor(
           .matching(query(where(mappedBy).is(entityId)).sort(byColumn))
           .all()
           .collectList()
-          .contextWrite(ctx -> {
-            final var store = ctx.<List<Object>>getOrDefault(OneToMany.class, List.of());
-            final var next = Stream.concat(store.stream(), Stream.of(entityId)).toList();
-
-            return ctx.put(OneToMany.class, next);
-          })
+          .contextWrite(this.storeWith(entityId))
       );
   }
 
@@ -92,6 +79,7 @@ public record OneToManyProcessor(
 
     return Mono.just(this.entity)
       .mapNotNull(this::idValueOf)
+      .flatMap(this::breackingCycles)
       .flatMap(entityId -> {
         final var innerType = this.domainFor(Reflect.innerTypeOf(field));
         final var mappedBy = Optional.of(annotation)
@@ -142,14 +130,36 @@ public record OneToManyProcessor(
               return this.template
                 .update(innerType)
                 .matching(allOrphans)
-                .apply(Update.update(mappedBy, null));
+                .apply(update(mappedBy, null));
             }
 
             return this.template
               .delete(innerType)
               .matching(allOrphans)
               .all();
-          });
+          })
+          .contextWrite(this.storeWith(entityId));
       });
+  }
+
+  private <T> Mono<T> breackingCycles(final T entityId) {
+    return Mono.deferContextual(ctx -> {
+      final var store = ctx.<List<Object>>getOrDefault(OneToMany.class, List.of());
+
+      return Flux.fromIterable(store)
+        .filter(entityId::equals)
+        .collectList()
+        .filter(List::isEmpty)
+        .map(x -> entityId);
+    });
+  }
+
+  private Function<Context, Context> storeWith(final Object entityId) {
+    return ctx -> {
+      final var store = ctx.<List<Object>>getOrDefault(OneToMany.class, List.of());
+      final var next = Stream.concat(store.stream(), Stream.of(entityId)).toList();
+
+      return ctx.put(OneToMany.class, next);
+    };
   }
 }

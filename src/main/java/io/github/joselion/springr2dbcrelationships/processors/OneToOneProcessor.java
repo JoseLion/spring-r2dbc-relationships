@@ -53,27 +53,27 @@ public record OneToOneProcessor(
 
       return Mono.just(this.entity)
         .mapNotNull(Reflect.getter(mappedField))
-        .flatMap(this::breakOnCycle)
+        .flatMap(this::breakingCycles)
         .flatMap(fkValue ->
           this.template
             .select(fieldType)
             .as(fieldProjection)
             .matching(query(where(parentId).is(fkValue)))
             .one()
-            .contextWrite(this.storeOf(fkValue))
+            .contextWrite(this.storeWith(fkValue))
         );
     }
 
     return Mono.just(this.entity)
       .mapNotNull(this::idValueOf)
-      .flatMap(this::breakOnCycle)
+      .flatMap(this::breakingCycles)
       .flatMap(entityId ->
         this.template
           .select(fieldType)
           .as(fieldProjection)
           .matching(query(where(mappedBy).is(entityId)))
           .one()
-          .contextWrite(this.storeOf(entityId))
+          .contextWrite(this.storeWith(entityId))
       );
   }
 
@@ -90,7 +90,7 @@ public record OneToOneProcessor(
 
       return Mono.just(this.entity)
         .mapNotNull(Reflect.getter(field))
-        .flatMap(this::breakOnCycle)
+        .flatMap(this::breakingCycles)
         .flatMap(this::save)
         .flatMap(saved -> {
           final var savedId = this.idValueOf(saved);
@@ -98,12 +98,12 @@ public record OneToOneProcessor(
           return Mono.just(this.entity)
             .map(Reflect.update(mappedField, savedId))
             .map(Reflect.update(field, saved))
-            .contextWrite(this.storeOf(savedId));
+            .contextWrite(this.storeWith(savedId));
         })
         .switchIfEmpty(
           Mono.just(this.entity)
             .map(Reflect.update(mappedField, null))
-            .flatMap(this::breakOnCycle)
+            .flatMap(this::breakingCycles)
             .delayUntil(x -> {
               if (!annotation.keepOrphan() && mappedId != null) {
                 final var parentId = this.idColumnOf(fieldType);
@@ -118,12 +118,12 @@ public record OneToOneProcessor(
             })
         )
         .defaultIfEmpty(this.entity)
-        .contextWrite(this.storeOf(mappedId));
+        .contextWrite(this.storeWith(mappedId));
     }
 
     return Mono.just(this.entity)
       .mapNotNull(this::idValueOf)
-      .flatMap(this::breakOnCycle)
+      .flatMap(this::breakingCycles)
       .flatMap(entityId ->
         Mono.just(this.entity)
           .mapNotNull(Reflect.getter(field))
@@ -146,7 +146,7 @@ public record OneToOneProcessor(
               )
               .then(Mono.empty())
           )
-          .contextWrite(this.storeOf(entityId))
+          .contextWrite(this.storeWith(entityId))
       );
   }
 
@@ -213,7 +213,7 @@ public record OneToOneProcessor(
       });
   }
 
-  private Mono<Object> breakOnCycle(final Object entityId) {
+  private Mono<Object> breakingCycles(final Object entityId) {
     return Mono.deferContextual(ctx -> {
       final var store = ctx.<List<Object>>getOrDefault(OneToOne.class, List.of());
       final var distinct = store.stream().distinct().toList();
@@ -230,7 +230,7 @@ public record OneToOneProcessor(
     });
   }
 
-  private Function<Context, Context> storeOf(final @Nullable Object entityId) {
+  private Function<Context, Context> storeWith(final @Nullable Object entityId) {
     return ctx -> {
       if (entityId != null) {
         final var store = ctx.getOrDefault(OneToOne.class, List.<Object>of());

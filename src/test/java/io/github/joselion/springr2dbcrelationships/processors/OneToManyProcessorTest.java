@@ -313,5 +313,31 @@ import reactor.core.publisher.Mono;
         }
       }
     }
+
+    @Nested class when_the_children_persist_option_is_true {
+      @Test void creates_the_children_entities_breaking_cycles() {
+        Flux.just(manhattan, albuquerque, springfield)
+          .map(Town::of)
+          .delayElements(Duration.ofMillis(1))
+          .collectList()
+          .map(usa::withTowns)
+          .flatMap(countryRepo::save)
+          .map(Country::id)
+          .flatMap(countryRepo::findById)
+          .zipWhen(x -> countryRepo.count())
+          .as(TxStepVerifier::withRollback)
+          .assertNext(consumer((country, countryCount) -> {
+            assertThat(countryCount).isOne();
+            assertThat(country.towns())
+              .allSatisfy(town -> {
+                assertThat(town.countryId()).isEqualTo(country.id());
+                assertThat(town.country()).isNull();
+              })
+              .extracting(Town::name)
+              .containsExactly(springfield, albuquerque, manhattan);
+          }))
+          .verifyComplete();
+      }
+    }
   }
 }
