@@ -2,6 +2,7 @@
 [![CodeQL](https://github.com/JoseLion/spring-r2dbc-relationships/actions/workflows/codeql.yml/badge.svg)](https://github.com/JoseLion/spring-r2dbc-relationships/actions/workflows/codeql.yml)
 [![Release](https://github.com/JoseLion/spring-r2dbc-relationships/actions/workflows/release.yml/badge.svg)](https://github.com/JoseLion/spring-r2dbc-relationships/actions/workflows/release.yml)
 [![Maven Central](https://img.shields.io/maven-central/v/io.github.joselion/spring-r2dbc-relationships?logo=sonatype)](https://central.sonatype.com/artifact/io.github.joselion/spring-r2dbc-relationships)
+[![Javadoc](https://javadoc.io/badge2/io.github.joselion/spring-r2dbc-relationships/javadoc.svg)](https://javadoc.io/doc/io.github.joselion/spring-r2dbc-relationships)
 [![License](https://img.shields.io/github/license/JoseLion/spring-r2dbc-relationships)](https://github.com/JoseLion/spring-r2dbc-relationships/blob/main/LICENSE)
 [![Known Vulnerabilities](https://snyk.io/test/github/JoseLion/spring-r2dbc-relationships/badge.svg)](https://snyk.io/test/github/JoseLion/spring-r2dbc-relationships)
 
@@ -33,6 +34,7 @@ _Spring R2DBC Relationships_ leverages the [Entity Callback API](https://docs.sp
   - [@ManyToOne](#manytoone)
   - [@ManyToMany](#manytomany)
   - [Projections](#projections)
+- [API Reference](#api-reference)
 - [Contributing](#contributing)
 - [License](#license)
 
@@ -86,6 +88,9 @@ public class MyApplicationConfiguration {
 Spring R2DBC is not an ORM, and _Spring R2DBC Relationships_ abides by the same philosophy. In that sense, the library will persist entities when necessary and link them to their relations, but you still need to have all fields that map those links in your entities, a.k.a. the "foreign key" column fields.
 
 ### @OneToOne
+
+> [!HINT]
+> You can find the complete list of parameters for this annotation in the [@OneToOne Javadocs](https://javadoc.io/doc/io.github.joselion/spring-r2dbc-relationships/latest/io/github/joselion/springr2dbcrelationships/annotations/OneToOne.html) reference.
 
 The `@OneToOne` annotation lets you mark fields to have a one-to-one relationship. The default behavior of the annotation is to populate the field after mapping the entity object, create/update the associated entity, and link the relation by setting the "foreign key" field in the proper entity.
 
@@ -145,6 +150,9 @@ public record Details(
 
 ### @OneToMany
 
+> [!HINT]
+> You can find the complete list of parameters for this annotation in the [@OneToMany Javadocs](https://javadoc.io/doc/io.github.joselion/spring-r2dbc-relationships/latest/io/github/joselion/springr2dbcrelationships/annotations/OneToMany.html) reference.
+
 The `@OneToMany` annotation lets you mark fields to have a one-to-many relationship. The default behavior of the annotation is to populate the field after mapping the entity object, create/update the children entities, and link the relations by setting the "foreign key" field in each child entity.
 
 You can achieve bidirectional one-to-many relationships using the `@ManyToOne` annotation on the children's side of the relationship. Check the next section for more details on that. There's also a different use case where the children entities already exist, and you only need to link them to the parent without changing the existing entities. You can set `linkOnly = true` in the annotation parameters to achieve said behavior. However, link-only associations will fail if the linked entity does not exist when you create/update the parent.
@@ -198,6 +206,9 @@ The `@OneToMany` annotation handles orphan children removal for you. Meaning it 
 
 ### @ManyToOne
 
+> [!HINT]
+> You can find the complete list of parameters for this annotation in the [@ManyToOne Javadocs](https://javadoc.io/doc/io.github.joselion/spring-r2dbc-relationships/latest/io/github/joselion/springr2dbcrelationships/annotations/ManyToOne.html) reference.
+
 The `@ManyToOne` annotation lets you mark fields to have a many-to-one relationship. As mentioned in the previous section, the many-to-one relationship is the backreference of a one-to-many relationship. Simply put, this annotation lets you have a reference to the parent entity on each child. That said, the default behavior of the annotation is to populate the field after mapping the entity object, but it will not create, update, or link the parent entity. By default, this side of the relationship is read-only. You can change this behavior by setting `persist = true` in the annotation parameters, but remember that changing a single child's parent will affect all the children.
 
 As mentioned above, you can achieve bidirectional many-to-one relationships using the `@OneToMany` annotation on the parent side of the relationship. Check the previous section for more details on that.
@@ -225,7 +236,10 @@ public record City(
 
 If the annotation is `persist = true` and the field is `null` upon persistence, the annotation shall never delete the parent because it can still have other linked children. However, it will change the foreign key to `null` to unlink the children from the parent.
 
-### ManyToMany
+### @ManyToMany
+
+> [!HINT]
+> You can find the complete list of parameters for this annotation in the [@ManyToMany Javadocs](https://javadoc.io/doc/io.github.joselion/spring-r2dbc-relationships/latest/io/github/joselion/springr2dbcrelationships/annotations/ManyToMany.html) reference.
 
 The `@ManyToMany` annotation lets you mark fields to have a many-to-many relationship. The default behavior of the annotation is to populate the field after mapping the entity object, create/update the associated entities, and link the relations on the join table. The annotation uses the join table transparently, meaning you **don't need** to create an entity type for the join table on your codebase.
 
@@ -313,6 +327,14 @@ public record PersonMin(
 
   // implementation omitted...
 }
+```
+
+## API Reference
+
+You can find more details of the API in the [latest Javadocs](https://javadoc.io/doc/io.github.joselion/spring-r2dbc-relationships). If you need the Javadocs of an older version, you can use the full URL as shown below, replacing `x.y.z` with the version you want to see:
+
+```
+https://javadoc.io/doc/io.github.joselion/spring-r2dbc-relationships/x.y.z
 ```
 
 ## Contributing
