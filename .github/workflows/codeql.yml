@@ -28,10 +28,10 @@ jobs:
           check-latest: true
       - uses: gradle/actions/setup-gradle@v3
       - uses: gradle/actions/wrapper-validation@v3
-      - uses: github/codeql-action/init@v2
+      - uses: github/codeql-action/init@v3
         with:
           languages: java-kotlin
       - run: ./gradlew build -x check
-      - uses: github/codeql-action/analyze@v2
+      - uses: github/codeql-action/analyze@v3
         with:
           category: /language:java-kotlin
