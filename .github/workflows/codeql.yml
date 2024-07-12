@@ -21,12 +21,13 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-java@v3
+      - uses: actions/setup-java@v4
         with:
           distribution: oracle
-          java-version: 21
+          java-version: 22
           check-latest: true
       - uses: gradle/actions/setup-gradle@v3
+      - uses: gradle/actions/wrapper-validation@v3
       - uses: github/codeql-action/init@v2
         with:
           languages: java-kotlin

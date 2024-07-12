@@ -59,7 +59,7 @@ import reactor.util.function.Tuples;
   private String wormHoles = "Theoretical Worm Holes";
 
   @Nested class populate {
-    @Test void populates_the_field_with_the_joined_entities() throws InterruptedException {
+    @Test void populates_the_field_with_the_joined_entities() {
       final var chrisTolkin = Author.of("Christopher Tolkien");
       final var ringsWar = "The War of the Ring";
 
