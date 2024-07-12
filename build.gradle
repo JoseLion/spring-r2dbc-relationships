@@ -24,7 +24,7 @@ group = 'io.github.joselion'
 java {
   sourceCompatibility = JavaLanguageVersion.of(17)
   toolchain {
-    languageVersion = JavaLanguageVersion.of(21)
+    languageVersion = JavaLanguageVersion.of(22)
     vendor = JvmVendorSpec.ORACLE
   }
   withJavadocJar()
@@ -68,7 +68,6 @@ checkstyle {
 }
 
 sonarLint {
-  setToolVersion(libs.versions.sonarlint.core.get())
   languages {
     include('java')
   }
@@ -95,13 +94,6 @@ strictNullCheck {
 
 dependencyLocking {
   lockAllConfigurations()
-}
-
-// Workaround for: https://github.com/checkstyle/checkstyle/issues/14211
-configurations.checkstyle {
-  resolutionStrategy.capabilitiesResolution.withCapability("com.google.collections:google-collections") {
-    select("com.google.guava:guava:0")
-  }
 }
 
 repositories {
